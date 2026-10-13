@@ -19,3 +19,13 @@ Next.js + Supabase. مشروع قاعدة البيانات: `erqsricplegkowugkgw
 لا تضع مفاتيح سرية أو بيانات طلاب حقيقية في المستودع.
 
 في الاختبار الموحد يظهر نموذج واحد بثلاثة أعمدة، والتحديد مباشرة داخل الدوائر. الأرقام الداخلية للمفتاح: 1–20 لغتي، 21–40 الرياضيات، 41–60 العلوم؛ الواجهة تعرض 1–20 داخل كل مادة. يمكن اعتماد أي عدد من الأسئلة المختارة لكل مادة. الضغط الثاني يلغي التظليل، والخانات غير المحددة لا تُحفظ في المفتاح ولا تدخل في التصحيح. يظهر تقرير للمراجعة والتأكيد والطباعة قبل الاعتماد وبعده.
+
+### Student online answer sheet
+
+- Public student entry: `/student`, using a registered 10-digit civil ID.
+- Admin: **الإجابة الإلكترونية** → select an approved global exam → import the school roster → open online answering. Roster import creates students only, with no submissions.
+- Students see only approved question numbers; correct options and scores remain on the server. Click a bubble again to clear it. Confirmation explicitly counts unanswered questions before final submission.
+- The Supabase `student-exam` Edge Function authenticates civil-ID entry, then uses an expiring random session capability for reading and submitting. Only the function's service role can call `student_exam_gateway`; student tables and answer keys remain protected by existing RLS.
+- Answers are graded atomically, cannot be submitted twice, and appear in the admin results under `source=online`. Disable `online_enabled`, close, or delete the exam to stop access.
+- Civil-ID-only entry is the requested identification method; it does not establish possession of the student's identity.
+- Database setup: `database/student-online.sql`. Edge deployment: `supabase/functions/student-exam/index.ts` and `deno.json`, JWT verification disabled because this endpoint implements its own entry/session validation. No server key is shipped to the browser.
