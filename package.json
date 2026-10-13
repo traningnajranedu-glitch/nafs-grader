@@ -12,7 +12,9 @@
     "react": "19.1.7",
     "react-dom": "19.1.7",
     "@supabase/supabase-js": "2.57.0",
-    "xlsx": "0.18.5"
+    "xlsx": "0.18.5",
+    "jspdf": "3.0.3",
+    "html2canvas": "1.4.1"
   },
   "devDependencies": {
     "typescript": "5.9.2",
