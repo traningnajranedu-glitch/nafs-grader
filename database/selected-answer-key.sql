@@ -7,12 +7,13 @@ begin
  if v_status is distinct from 'draft' then raise exception 'يجب أن يكون الاختبار مسودة؛ المفتاح المعتمد لا يقبل التعديل'; end if;
  v_count:=case when v_subject='جميع المواد' then 60 else 20 end;
  if jsonb_typeof(p_options) is distinct from 'array' then raise exception 'الإجابات غير صالحة'; end if;
- if jsonb_array_length(p_options)<>v_count or exists(select 1 from jsonb_array_elements(p_options) a where jsonb_typeof(a)<>'string' or a#>>'{}' not in ('A','B','C','D')) then raise exception 'اختر إجابة صحيحة واحدة لكل سؤال؛ العدد المطلوب: %',v_count; end if;
+ if jsonb_array_length(p_options)<>v_count or exists(select 1 from jsonb_array_elements(p_options) a where jsonb_typeof(a)<>'string' or a#>>'{}' not in ('','A','B','C','D')) then raise exception 'توجد إجابات غير صالحة'; end if;
+ if not exists(select 1 from jsonb_array_elements_text(p_options) a where a<>'') then raise exception 'اختر إجابة واحدة على الأقل قبل الاعتماد'; end if;
  if exists(select 1 from public.exam_questions where exam_id=p_exam) then raise exception 'يوجد مفتاح محفوظ؛ لا يمكن استبداله بهذه العملية'; end if;
  insert into public.exam_questions(exam_id,question_number,correct_option,points)
- select p_exam,ordinality::integer,value,1 from jsonb_array_elements_text(p_options) with ordinality;
+ select p_exam,ordinality::integer,value,1 from jsonb_array_elements_text(p_options) with ordinality where value<>'';
  update public.exams set status='approved' where id=p_exam;
- return jsonb_build_object('exam_id',p_exam,'status','approved','question_count',v_count);
+ return jsonb_build_object('exam_id',p_exam,'status','approved','question_count',(select count(*) from public.exam_questions where exam_id=p_exam));
 end $$;
 revoke all on function public.approve_selected_answer_key(uuid,jsonb) from public,anon;
 grant execute on function public.approve_selected_answer_key(uuid,jsonb) to authenticated;
@@ -24,7 +25,7 @@ begin
  if old.status='closed' and new.status<>'closed' then raise exception 'Closed exams cannot be reopened'; end if;
  if new.status in ('approved','closed') and old.status='draft' then
   if not exists(select 1 from public.exam_questions where exam_id=new.id) then raise exception 'Answer key is empty'; end if;
-  if new.subject='جميع المواد' and ((select count(*) from public.exam_questions where exam_id=new.id)<>60 or exists(select 1 from public.exam_questions where exam_id=new.id and question_number not between 1 and 60)) then raise exception 'يجب إكمال إجابات المواد الثلاث: 20 سؤالًا لكل مادة'; end if;
+  if new.subject='جميع المواد' and exists(select 1 from public.exam_questions where exam_id=new.id and question_number not between 1 and 60) then raise exception 'رقم سؤال خارج النموذج'; end if;
  end if;
  return new;
 end $$;

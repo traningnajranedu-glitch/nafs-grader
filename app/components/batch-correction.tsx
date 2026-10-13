@@ -6,12 +6,12 @@ import type {Reading} from '../../lib/omr';
 import {supabase} from '../../lib/supabase';
 type School={id:string;name:string;gender:string;stage:string};
 type Row={page:number;meta:Partial<SheetMeta>;schoolId:string;examId:string;groups:Reading[][];decisions:Record<string,string>;image:string;issue:string;trusted:boolean;saved:boolean;score?:number;total?:number};
-import {isCombined,questionCount,questionLabel,readingsForExam} from '../../lib/exam-subjects';
+import {isCombined,questionCount,questionLabel,readingsForKey} from '../../lib/exam-subjects';
 export default function BatchCorrection({schools,onSaved}:{schools:School[];onSaved:()=>Promise<void>}){const [rows,setRows]=useState<Row[]>([]),[exams,setExams]=useState<any[]>([]),[keys,setKeys]=useState<Record<string,any[]>>({}),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[open,setOpen]=useState<number|null>(null),[confirmed,setConfirmed]=useState(false);const worker=useRef<any>(null);
 useEffect(()=>()=>{worker.current?.terminate();worker.current=null},[]);
 function patch(page:number,change:Partial<Row>){setRows(rs=>rs.map(r=>r.page===page?{...r,...change}:r));setConfirmed(false)}
 async function run(fn:()=>Promise<void>){setBusy(true);setNotice('');try{await fn()}catch(e){setNotice(e instanceof Error?e.message:String(e))}finally{setBusy(false)}}
-function readings(row:Row){const exam=exams.find(e=>e.id===row.examId);return readingsForExam(exam?.subject,row.groups)}
+function readings(row:Row){const exam=exams.find(e=>e.id===row.examId);return readingsForKey(exam?.subject,row.groups,(keys[row.examId]||[]).map(q=>q.question_number))}
 function option(row:Row,r:Reading){return row.decisions[r.questionNumber]??r.selected??''}
 function pending(row:Row){return readings(row).filter(r=>(r.state==='uncertain'||r.state==='multiple')&&row.decisions[r.questionNumber]===undefined).length}
 function eligibility(row:Row){if(row.issue)return row.issue;if(rows.filter(r=>!r.saved&&r.schoolId===row.schoolId&&r.examId===row.examId&&r.meta.code?.trim()===row.meta.code?.trim()).length>1)return 'ورقة مكررة لنفس الطالب والاختبار في الملف';if(!row.schoolId||!row.meta.name?.trim()||!row.meta.code?.trim())return 'بيانات المدرسة أو الطالب ناقصة';if(!row.trusted)return 'راجع بيانات الورقة السابقة وأكدها';const exam=exams.find(e=>e.id===row.examId);if(!exam||exam.school_id!==row.schoolId)return 'اختر اختبارًا معتمدًا لهذه المدرسة';if(exam.grade&&row.meta.grade&&String(exam.grade)!==String(row.meta.grade))return 'صف الطالب لا يطابق الاختبار';const q=keys[row.examId];if(!q?.length||q.some(x=>x.question_number<1||x.question_number>questionCount(exam.subject)))return 'المفتاح غير جاهز أو أرقام الأسئلة لا تطابق النموذج';if(!readings(row).length)return 'تعذر قراءة عمود المادة';if(pending(row))return 'توجد إجابات غير واضحة تحتاج مراجعة';return ''}
