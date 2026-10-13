@@ -69,7 +69,10 @@ pdf.addImage(canvas.toDataURL('image/jpeg',0.9),'JPEG',0,0,210,297);
 canvas.width=0;canvas.height=0;
 }
 pdf.save('nafs-answer-sheets.pdf');
-setStatus('تم إصدار ملف PDF بنجاح: '+students.length+' ورقة إجابة');
+if(!supabase)throw new Error('تعذر تسجيل عملية الإصدار: الاتصال بقاعدة البيانات غير متاح');
+const log=await supabase.from('answer_sheet_prints').insert({school_name:schoolNameInput.trim(),gender,stage,grade:grade||null,student_count:students.length});
+if(log.error)throw new Error('تم إنشاء PDF ولكن تعذر تسجيل العملية لدى مدير النظام: '+log.error.message);
+setStatus('تم إصدار ملف PDF وتسجيل العملية لدى مدير النظام: '+students.length+' ورقة إجابة');
 }catch(e){setStatus('تعذر إصدار PDF: '+(e instanceof Error?e.message:'خطأ غير معروف'))}
 finally{setBusy(false)}
 }
