@@ -47,3 +47,8 @@
 .answer-line{height:29px;gap:4px}
 .answer-paper .bubble{width:28px;height:28px;font-size:12px;border:1.25px solid #222}
 .answer-paper .question-no{font-size:12px;min-width:18px}
+
+.answer-paper .filled-bubble{background:#111;color:#fff;border-color:#111}
+.answer-paper button.bubble{padding:0;cursor:pointer;font-family:inherit;transition:none}
+.answer-paper button.bubble:hover:not(:disabled){transform:none;filter:none;outline:2px solid #087e83;outline-offset:2px}
+.answer-paper button.bubble:focus-visible{outline:3px solid #087e83;outline-offset:2px}
