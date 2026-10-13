@@ -24,3 +24,4 @@
 .subject-rows{height:auto;display:flex;flex-direction:column;gap:5px;justify-content:flex-start;border:1px solid #333;border-radius:9px;padding:11px 7px;min-height:640px}
 .answer-line{height:25px;justify-content:space-between;gap:4px}.question-no{min-width:18px;font-size:11px}.bubble{width:24px;height:24px;border:1px solid #333;font-size:10px;flex-shrink:0}
 .paper-footer{font-size:10px;bottom:43px}
+.batch-review{display:grid;grid-template-columns:minmax(250px,1fr) minmax(250px,1fr);gap:20px;margin:20px 0}.batch-review img{width:100%;height:auto;align-self:start}.batch-review select,.batch-review input{max-width:100%}@media(max-width:900px){.batch-review{grid-template-columns:1fr}}

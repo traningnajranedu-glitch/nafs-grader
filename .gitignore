@@ -6,3 +6,5 @@ node_modules/
 
 public/pdf.worker.min.mjs
 *.tsbuildinfo
+
+public/ocr/

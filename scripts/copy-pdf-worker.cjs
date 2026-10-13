@@ -1,1 +1,2 @@
 const fs=require('node:fs');fs.mkdirSync('public',{recursive:true});fs.copyFileSync('node_modules/pdfjs-dist/build/pdf.worker.min.mjs','public/pdf.worker.min.mjs');
+fs.mkdirSync('public/ocr',{recursive:true});fs.copyFileSync('node_modules/tesseract.js/dist/worker.min.js','public/ocr/worker.min.js');for(const file of fs.readdirSync('node_modules/tesseract.js-core')){if(file.endsWith('.wasm')||file.endsWith('.wasm.js'))fs.copyFileSync('node_modules/tesseract.js-core/'+file,'public/ocr/'+file)}
