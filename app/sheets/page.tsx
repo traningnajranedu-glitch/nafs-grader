@@ -13,7 +13,7 @@ function Paper({student,schoolName,gender,stage,grade,counts}:{student:Student;s
 return <article className="answer-paper">
 <span className="mark m1"/><span className="mark m2"/><span className="mark m3"/><span className="mark m4"/>
 <div className="reference-header">
-<div className="reference-school"><div className="education-sign"><div className="education-dots">● ● ●<br/> ● ● ● ●<br/> ● ● ●</div><strong>وزارة التعليم</strong><small>Ministry of Education</small></div><h2>{schoolName||'اسم المدرسة'}</h2><p>{gender} — {stage}{grade?' — '+grade:''}</p><h3>{student.name}</h3></div>
+<div className="reference-school"><div className="education-sign"><div className="education-dots">● ● ●<br/> ● ● ● ●<br/> ● ● ●</div><strong>وزارة التعليم</strong><small>Ministry of Education</small></div><h2 style={{fontWeight:800}}>مدرسة {schoolName||'اسم المدرسة'}</h2><p>{gender} — {stage}{grade?' — '+grade:''}</p><h3>{student.name}</h3></div>
 <div className="reference-barcode"><Barcode value={student.code}/><p>نموذج الاختبار</p><div className="example-bubbles">{['أ','ب','ج','د'].map(x=><span key={x}>{x}</span>)}</div><div className="mark-guide"><div><b>تظليل خطأ</b><p>◉ ◯ ◐ ✕ ◉</p><small>Incorrect Marks</small></div><div><b>التظليل الصحيح</b><p>●</p><small>Correct Mark</small></div></div></div>
 </div>
 <div className="identity-line"><span>{schoolName}</span><strong>{student.code}</strong></div>
