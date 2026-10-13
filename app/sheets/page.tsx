@@ -2,14 +2,25 @@
 import {useEffect,useRef,useState} from 'react';
 import * as XLSX from 'xlsx';
 import {supabase} from '../../lib/supabase';
+import JsBarcode from 'jsbarcode';
 type Student={code:string;name:string;grade:string;section:string};
 type School={id:string;name:string};
 const field={padding:'11px 12px',border:'1px solid #cbd5e1',borderRadius:9,minWidth:180,maxWidth:'100%'} as const;
 const button={background:'#087e83',color:'#fff',border:0,borderRadius:9,padding:'12px 20px',cursor:'pointer'} as const;
 const choices=['د','ج','ب','أ'];
-function Cell({n}:{n:number}){return <div className="answer-line"><span className="question-no">{n}</span>{choices.map(c=><span className="bubble" key={c}>{c}</span>)}</div>}
+function Barcode({value}:{value:string}){const svg=useRef<SVGSVGElement>(null);useEffect(()=>{if(svg.current&&value){try{JsBarcode(svg.current,value,{format:'CODE128',width:1.5,height:46,displayValue:true,fontSize:12,margin:0,textMargin:3})}catch{svg.current.replaceChildren()}}},[value]);return <svg ref={svg} className="student-barcode" aria-label={'باركود رقم الطالب '+value}/>}
+function Cell({n}:{n:number}){return <div className="answer-line"><span className="question-no">{n}</span>{['أ','ب','ج','د'].map(c=><span className="bubble" key={c}>{c}</span>)}</div>}
 function Paper({student,schoolName,counts}:{student:Student;schoolName:string;counts:number[]}){
-return <article className="answer-paper"><span className="mark m1"/><span className="mark m2"/><span className="mark m3"/><span className="mark m4"/><div className="paper-top"><div className="paper-label"><div className="paper-code">NAFS • {student.code}</div><small>ورقة إجابة اختبار نافس</small><div className="instructions">طريقة التظليل الصحيح: <b>●</b> &nbsp; لا تستخدم أكثر من إجابة للسؤال الواحد.</div></div><div className="paper-head"><div className="paper-emblem">التعليم</div><h2>{schoolName||'اسم المدرسة'}</h2><h3>{student.name}</h3><p>{student.grade} {student.section?'— '+student.section:''}</p></div></div><div className="student-number">رقم الطالب: <strong>{student.code}</strong></div><div className="subjects">{['لغتي','رياضيات','علوم'].map((subject,i)=><div className="subject" key={subject}><div className="subject-title">{subject}</div><div className="subject-rows">{Array.from({length:counts[i]},(_,j)=><Cell key={j} n={j+1}/>)}</div></div>)}</div><footer className="paper-footer">يُرجى التظليل بقلم واضح داخل الدائرة بالكامل • تأكد من صحة بيانات الطالب قبل بدء الاختبار</footer></article>
+return <article className="answer-paper">
+<span className="mark m1"/><span className="mark m2"/><span className="mark m3"/><span className="mark m4"/>
+<div className="reference-header">
+<div className="reference-school"><div className="education-sign"><div className="education-dots">● ● ●<br/> ● ● ● ●<br/> ● ● ●</div><strong>وزارة التعليم</strong><small>Ministry of Education</small></div><h2>{schoolName||'اسم المدرسة'}</h2><h3>{student.name}</h3>{student.grade&&<p>{student.grade} {student.section&&'— '+student.section}</p>}</div>
+<div className="reference-barcode"><Barcode value={student.code}/><p>نموذج الاختبار</p><div className="example-bubbles">{['أ','ب','ج','د'].map(x=><span key={x}>{x}</span>)}</div><div className="mark-guide"><div><b>تظليل خطأ</b><p>◉ ◯ ◐ ✕ ◉</p><small>Incorrect Marks</small></div><div><b>التظليل الصحيح</b><p>●</p><small>Correct Mark</small></div></div></div>
+</div>
+<div className="identity-line"><span>{schoolName}</span><strong>{student.code}</strong></div>
+<div className="subjects">{['لغتي','رياضيات','علوم'].map((subject,i)=><section className="subject" key={subject}><h4 className="subject-title">{subject}</h4><div className="subject-rows">{Array.from({length:counts[i]},(_,j)=><Cell key={j} n={j+1}/>)}</div></section>)}</div>
+<footer className="paper-footer">ورقة إجابة اختبار نافس — يُرجى تظليل دائرة واحدة لكل سؤال بقلم واضح</footer>
+</article>
 }
 export default function Sheets(){
 const [user,setUser]=useState(''),[schools,setSchools]=useState<School[]>([]),[school,setSchool]=useState(''),[students,setStudents]=useState<Student[]>([]),[counts,setCounts]=useState([20,20,20]),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[preview,setPreview]=useState(0);
