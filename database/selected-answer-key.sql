@@ -3,7 +3,7 @@ returns jsonb language plpgsql security invoker set search_path='' as $$
 declare v_status text; v_subject text; v_count integer;
 begin
  if auth.uid() is null or not exists(select 1 from public.system_admins where user_id=auth.uid()) then raise exception 'صلاحية مدير النظام مطلوبة'; end if;
- select status,subject into v_status,v_subject from public.exams where id=p_exam for update;
+ select status,subject into v_status,v_subject from public.exams where id=p_exam and deleted_at is null for update;
  if v_status is distinct from 'draft' then raise exception 'يجب أن يكون الاختبار مسودة؛ المفتاح المعتمد لا يقبل التعديل'; end if;
  v_count:=case when v_subject='جميع المواد' then 60 else 20 end;
  if jsonb_typeof(p_options) is distinct from 'array' then raise exception 'الإجابات غير صالحة'; end if;

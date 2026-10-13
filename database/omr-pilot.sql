@@ -5,7 +5,7 @@ returns jsonb language plpgsql security invoker set search_path='' as $$
 declare v_id uuid; v_school uuid; v_count integer; v_score numeric; v_total numeric;
 begin
  if auth.uid() is null or not exists(select 1 from public.system_admins where user_id=auth.uid()) then raise exception 'Unauthorized'; end if;
- select school_id into v_school from public.exams where id=p_exam and status='approved' for share;
+ select school_id into v_school from public.exams where id=p_exam and deleted_at is null and status='approved' for share;
  if v_school is null then raise exception 'اعتمد مفتاح الإجابة أولًا'; end if;
  if not exists(select 1 from public.students where id=p_student and school_id=v_school) then raise exception 'الطالب لا يتبع المدرسة المختارة'; end if;
  if jsonb_typeof(p_answers) is distinct from 'array' or coalesce((p_review->>'manual_identity_confirmed')::boolean,false)=false then raise exception 'المراجعة غير مكتملة'; end if;
