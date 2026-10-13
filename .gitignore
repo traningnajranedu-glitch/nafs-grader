@@ -3,3 +3,6 @@ node_modules/
 .env
 .env.local
 *.tsbuildinfo
+
+public/pdf.worker.min.mjs
+*.tsbuildinfo
