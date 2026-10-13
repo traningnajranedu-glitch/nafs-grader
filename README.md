@@ -29,3 +29,9 @@ Next.js + Supabase. مشروع قاعدة البيانات: `erqsricplegkowugkgw
 - Answers are graded atomically, cannot be submitted twice, and appear in the admin results under `source=online`. Disable `online_enabled`, close, or delete the exam to stop access.
 - Civil-ID-only entry is the requested identification method; it does not establish possession of the student's identity.
 - Database setup: `database/student-online.sql`. Edge deployment: `supabase/functions/student-exam/index.ts` and `deno.json`, JWT verification disabled because this endpoint implements its own entry/session validation. No server key is shipped to the browser.
+
+### Automatic enrollment from school imports
+
+`/sheets` now saves each valid school Excel roster through the insert-only `school-roster` Edge Function immediately after import. PDF issuance is optional and remains separately logged. Existing identities are never overwritten or moved by the public workflow; discrepancies require the system admin. Online answer sheets are generated on entry from the approved, enabled exam.
+
+Historical print logs saved only school metadata and sheet counts, not student names/IDs or source Excel files. Schools must reimport their original roster once to enroll those students. The admin online page shows live school roster coverage; it does not claim complete recovery from print totals. Database: `database/school-roster.sql`; rollback integration checks: `tests/school-roster.sql`.
