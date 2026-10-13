@@ -22,10 +22,10 @@ return <article className="answer-paper">
 </article>
 }
 export default function Sheets(){
-const [schoolNameInput,setSchoolNameInput]=useState(''),[schoolOptions,setSchoolOptions]=useState<{id:string;name:string}[]>([]),[gender,setGender]=useState(''),[stage,setStage]=useState(''),[grade,setGrade]=useState('');
+const [schoolNameInput,setSchoolNameInput]=useState(''),[schoolOptions,setSchoolOptions]=useState<{id:string;name:string;gender:string|null;stage:string|null}[]>([]),[gender,setGender]=useState(''),[stage,setStage]=useState(''),[grade,setGrade]=useState('');
 const [students,setStudents]=useState<Student[]>([]),[counts,setCounts]=useState([20,20,20]),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[preview,setPreview]=useState(0);
 const papers=useRef<HTMLDivElement>(null);
-useEffect(()=>{if(!supabase)return;supabase.from('schools').select('id,name').order('name').then(r=>{if(r.error)setStatus('تعذر تحميل قائمة المدارس: '+r.error.message);else setSchoolOptions(r.data||[])})},[]);
+useEffect(()=>{if(!supabase)return;supabase.from('schools').select('id,name,gender,stage').order('name').then(r=>{if(r.error)setStatus('تعذر تحميل قائمة المدارس: '+r.error.message);else setSchoolOptions(r.data||[])})},[]);
 function readStudents(file:File){setStatus('');file.arrayBuffer().then(buffer=>{
 const book=XLSX.read(buffer,{type:'array',cellText:true});const sheet=book.Sheets[book.SheetNames[0]];
 const grid=XLSX.utils.sheet_to_json<unknown[]>(sheet,{header:1,defval:'',raw:false}) as unknown[][];
@@ -43,7 +43,7 @@ setStudents(parsed);setPreview(0);setStatus('تم استيراد '+parsed.length
 function template(){const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['','مدرسة: اسم المدرسة',''],['','اسم الطالب','رقم الطالب'],['','طالب تجريبي','1000000001']]);ws['C3'].t='s';ws['!cols']=[{wch:4},{wch:38},{wch:20}];XLSX.utils.book_append_sheet(wb,ws,'الطلاب');XLSX.writeFile(wb,'nafs-school-students-template.xlsx')}
 async function makePdf(){
 if(!students.length){setStatus('استورد ملف الطلاب أولاً');return}
-if(!schoolNameInput.trim()||!gender||!stage){setStatus('أدخل اسم المدرسة وحدد الجنس والمرحلة قبل إصدار الملف');return}
+if(!schoolNameInput.trim()||!gender||!stage||!schoolOptions.some(s=>s.name===schoolNameInput&&s.gender===gender&&s.stage===stage)){setStatus('اختر الجنس والمرحلة ثم مدرسة مطابقة من القائمة قبل إصدار الملف');return}
 if(!papers.current){setStatus('تعذر تحميل معاينة الأوراق');return}
 setBusy(true);setStatus('جارٍ تجهيز أوراق الإجابة...');
 try{
@@ -78,8 +78,8 @@ finally{setBusy(false)}
 }
 const schoolName=schoolNameInput.trim();
 return <main className="sheet-app" dir="rtl"><div className="sheet-toolbar"><a href="/">← الصفحة الرئيسية</a><h1>طباعة أوراق إجابات الطلاب</h1><p>اختر اسم المدرسة من القائمة ثم استورد ملف Excel الذي يحتوي على اسم الطالب ورقم الطالب لإصدار أوراق الإجابة.</p></div><section className="sheet-panel"><div className="sheet-fields">
-<label>اسم المدرسة <select style={field} required value={schoolNameInput} onChange={e=>setSchoolNameInput(e.target.value)}><option value="">اختر المدرسة</option>{schoolOptions.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></label>
-<label>الجنس <select style={field} required value={gender} onChange={e=>setGender(e.target.value)}><option value="">اختر الجنس</option><option value="بنين">بنين</option><option value="بنات">بنات</option></select></label>
-<label>المرحلة <select style={field} required value={stage} onChange={e=>setStage(e.target.value)}><option value="">اختر المرحلة</option>{['طفولة مبكرة','ابتدائي','متوسط','ثانوي'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+<label>اسم المدرسة <select style={field} required value={schoolNameInput} onChange={e=>setSchoolNameInput(e.target.value)}><option value="">اختر المدرسة</option>{schoolOptions.filter(s=>s.gender===gender&&s.stage===stage).map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select></label>
+<label>الجنس <select style={field} required value={gender} onChange={e=>{setGender(e.target.value);setSchoolNameInput('')}}><option value="">اختر الجنس</option><option value="بنين">بنين</option><option value="بنات">بنات</option></select></label>
+<label>المرحلة <select style={field} required value={stage} onChange={e=>{setStage(e.target.value);setSchoolNameInput('')}}><option value="">اختر المرحلة</option>{['طفولة مبكرة','ابتدائي','متوسط','ثانوي'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
 <label>الصف (اختياري) <select style={field} value={grade} onChange={e=>setGrade(e.target.value)}><option value="">اختر الصف</option>{Array.from({length:10},(_,i)=>i+1).map(n=><option key={n} value={String(n)}>{n}</option>)}</select></label></div><div className="sheet-fields"><button style={button} onClick={template}>تحميل قالب Excel</button><label className="file-label">استيراد أسماء الطلاب <input type="file" accept=".xlsx,.xls" onChange={e=>{const f=e.target.files?.[0];if(f)readStudents(f);e.target.value=''}}/></label><button style={button} type="button" disabled={busy||!students.length||!schoolNameInput.trim()||!gender||!stage} onClick={makePdf}>{busy?'جارٍ إنشاء الملف...':'إصدار PDF لجميع الطلاب'}</button></div><p role="status">{status}</p><p>عدد الطلاب المستوردين: <strong>{students.length}</strong> — صفحة واحدة لكل طالب، مقاس A4.</p></section>{students.length>0&&<section className="sheet-panel"><h2>معاينة ورقة الإجابة</h2><div className="sheet-fields"><button onClick={()=>setPreview(p=>Math.max(0,p-1))} disabled={!preview}>السابق</button><span>{preview+1} / {students.length}</span><button onClick={()=>setPreview(p=>Math.min(students.length-1,p+1))} disabled={preview===students.length-1}>التالي</button></div><div className="sheet-preview"><Paper student={students[preview]} schoolName={schoolName} gender={gender} stage={stage} grade={grade} counts={counts}/></div></section>}<div ref={papers} className="pdf-stage" aria-hidden="true">{students.map((s,i)=><Paper key={s.code+'-'+i} student={s} schoolName={schoolName} gender={gender} stage={stage} grade={grade} counts={counts}/>)}</div></main>
 }
