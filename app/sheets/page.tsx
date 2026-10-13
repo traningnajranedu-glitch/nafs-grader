@@ -42,7 +42,38 @@ if(parsed.length>250){setStatus('الحد الأقصى للدفعة الواحد
 setStudents(parsed);setPreview(0);setStatus('تم استيراد '+parsed.length+' طالبًا بنجاح من تنسيق الملف المدرسي')
 }).catch(()=>setStatus('تعذر قراءة ملف Excel'))}
 function template(){const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['','مدرسة: اسم المدرسة',''],['','اسم الطالب','رقم الطالب'],['','طالب تجريبي','1000000001']]);ws['C3'].t='s';ws['!cols']=[{wch:4},{wch:38},{wch:20}];XLSX.utils.book_append_sheet(wb,ws,'الطلاب');XLSX.writeFile(wb,'nafs-school-students-template.xlsx')}
-async function makePdf(){if(!papers.current||!students.length)return;setBusy(true);setStatus('جارٍ إنشاء ملف PDF ...');try{const [{default:html2canvas},{jsPDF}]=await Promise.all([import('html2canvas'),import('jspdf')]);const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});const elements=Array.from(papers.current.querySelectorAll<HTMLElement>('.answer-paper'));for(let i=0;i<elements.length;i++){setStatus('إنشاء الصفحة '+(i+1)+' من '+elements.length);const canvas=await html2canvas(elements[i],{scale:1.5,backgroundColor:'#ffffff',useCORS:false,logging:false});if(i)pdf.addPage();pdf.addImage(canvas.toDataURL('image/jpeg',0.87),'JPEG',0,0,210,297);canvas.width=0;canvas.height=0;}pdf.save('nafs-answer-sheets.pdf');setStatus('تم إنشاء ملف PDF لعدد '+students.length+' طالبًا')}catch(e){setStatus('تعذر إنشاء PDF: '+(e instanceof Error?e.message:'خطأ غير معروف'))}finally{setBusy(false)}}
+async function makePdf(){
+if(!students.length){setStatus('استورد ملف الطلاب أولاً');return}
+if(!school){setStatus('اختر المدرسة قبل إصدار الملف');return}
+if(!papers.current){setStatus('تعذر تحميل معاينة الأوراق');return}
+setBusy(true);setStatus('جارٍ تجهيز أوراق الإجابة...');
+try{
+const [{default:html2canvas},{jsPDF}]=await Promise.all([import('html2canvas'),import('jspdf')]);
+await document.fonts.ready;
+const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+const elements=Array.from(papers.current.querySelectorAll<HTMLElement>('.answer-paper'));
+if(elements.length!==students.length)throw new Error('عدد أوراق الإجابة لا يطابق عدد الطلاب');
+for(let i=0;i<elements.length;i++){
+setStatus('جارٍ إصدار الصفحة '+(i+1)+' من '+elements.length);
+await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+const canvas=await html2canvas(elements[i],{
+scale:1.5,backgroundColor:'#ffffff',useCORS:false,logging:false,
+windowWidth:1100,windowHeight:1300,
+onclone:(doc)=>{
+const stage=doc.querySelector<HTMLElement>('.pdf-stage');
+if(stage){stage.style.position='absolute';stage.style.left='0px';stage.style.top='0px';stage.style.zIndex='1';stage.style.pointerEvents='none'}
+}
+});
+if(canvas.width<100||canvas.height<100)throw new Error('تعذر تصوير ورقة الطالب رقم '+(i+1));
+if(i>0)pdf.addPage();
+pdf.addImage(canvas.toDataURL('image/jpeg',0.9),'JPEG',0,0,210,297);
+canvas.width=0;canvas.height=0;
+}
+pdf.save('nafs-answer-sheets.pdf');
+setStatus('تم إصدار ملف PDF بنجاح: '+students.length+' ورقة إجابة');
+}catch(e){setStatus('تعذر إصدار PDF: '+(e instanceof Error?e.message:'خطأ غير معروف'))}
+finally{setBusy(false)}
+}
 const schoolName=schools.find(s=>s.id===school)?.name||'اسم المدرسة';
-return <main className="sheet-app" dir="rtl"><div className="sheet-toolbar"><a href="/workspace">← العودة إلى لوحة النظام</a><h1>طباعة أوراق إجابات الطلاب</h1><p>استيراد ملف المدرسة كما هو: اسم الطالب في العمود B ورقم الطالب في العمود C، مع السماح بعنوان المدرسة أعلى الجدول.</p></div>{!user?<div className="sheet-panel">يرجى <a href="/">تسجيل الدخول</a> أولًا.</div>:<><section className="sheet-panel"><div className="sheet-fields"><label>المدرسة <select style={field} value={school} onChange={e=>setSchool(e.target.value)}>{schools.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>{['لغتي','رياضيات','علوم'].map((s,i)=><label key={s}>عدد أسئلة {s} <input style={{...field,minWidth:75,width:80}} type="number" min="1" max="20" value={counts[i]} onChange={e=>setCounts(old=>old.map((v,j)=>i===j?Math.min(20,Math.max(1,Number(e.target.value)||1)):v))}/></label>)}</div><div className="sheet-fields"><button style={button} onClick={template}>تحميل قالب Excel</button><label className="file-label">استيراد أسماء الطلاب <input type="file" accept=".xlsx,.xls" onChange={e=>{const f=e.target.files?.[0];if(f)readStudents(f);e.target.value=''}}/></label><button style={button} disabled={busy||!students.length||!school} onClick={makePdf}>{busy?'جارٍ إنشاء الملف...':'إصدار PDF لجميع الطلاب'}</button></div><p role="status">{status}</p><p>عدد الطلاب المستوردين: <strong>{students.length}</strong> — صفحة واحدة لكل طالب، مقاس A4.</p></section>{students.length>0&&<section className="sheet-panel"><h2>معاينة ورقة الإجابة</h2><div className="sheet-fields"><button onClick={()=>setPreview(p=>Math.max(0,p-1))} disabled={!preview}>السابق</button><span>{preview+1} / {students.length}</span><button onClick={()=>setPreview(p=>Math.min(students.length-1,p+1))} disabled={preview===students.length-1}>التالي</button></div><div className="sheet-preview"><Paper student={students[preview]} schoolName={schoolName} counts={counts}/></div></section>}<div ref={papers} className="pdf-stage" aria-hidden="true">{students.map((s,i)=><Paper key={s.code+'-'+i} student={s} schoolName={schoolName} counts={counts}/>)}</div></>}</main>
+return <main className="sheet-app" dir="rtl"><div className="sheet-toolbar"><a href="/workspace">← العودة إلى لوحة النظام</a><h1>طباعة أوراق إجابات الطلاب</h1><p>استيراد ملف المدرسة كما هو: اسم الطالب في العمود B ورقم الطالب في العمود C، مع السماح بعنوان المدرسة أعلى الجدول.</p></div>{!user?<div className="sheet-panel">يرجى <a href="/">تسجيل الدخول</a> أولًا.</div>:<><section className="sheet-panel"><div className="sheet-fields"><label>المدرسة <select style={field} value={school} onChange={e=>setSchool(e.target.value)}>{schools.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>{['لغتي','رياضيات','علوم'].map((s,i)=><label key={s}>عدد أسئلة {s} <input style={{...field,minWidth:75,width:80}} type="number" min="1" max="20" value={counts[i]} onChange={e=>setCounts(old=>old.map((v,j)=>i===j?Math.min(20,Math.max(1,Number(e.target.value)||1)):v))}/></label>)}</div><div className="sheet-fields"><button style={button} onClick={template}>تحميل قالب Excel</button><label className="file-label">استيراد أسماء الطلاب <input type="file" accept=".xlsx,.xls" onChange={e=>{const f=e.target.files?.[0];if(f)readStudents(f);e.target.value=''}}/></label><button style={button} type="button" disabled={busy||!students.length||!school} onClick={makePdf}>{busy?'جارٍ إنشاء الملف...':'إصدار PDF لجميع الطلاب'}</button></div><p role="status">{status}</p><p>عدد الطلاب المستوردين: <strong>{students.length}</strong> — صفحة واحدة لكل طالب، مقاس A4.</p></section>{students.length>0&&<section className="sheet-panel"><h2>معاينة ورقة الإجابة</h2><div className="sheet-fields"><button onClick={()=>setPreview(p=>Math.max(0,p-1))} disabled={!preview}>السابق</button><span>{preview+1} / {students.length}</span><button onClick={()=>setPreview(p=>Math.min(students.length-1,p+1))} disabled={preview===students.length-1}>التالي</button></div><div className="sheet-preview"><Paper student={students[preview]} schoolName={schoolName} counts={counts}/></div></section>}<div ref={papers} className="pdf-stage" aria-hidden="true">{students.map((s,i)=><Paper key={s.code+'-'+i} student={s} schoolName={schoolName} counts={counts}/>)}</div></>}</main>
 }
