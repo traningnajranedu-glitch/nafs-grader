@@ -18,7 +18,7 @@ return <article className="answer-paper">
 </div>
 <div className="identity-line"><span>{schoolName}</span><strong>{student.code}</strong></div>
 <div className="subjects">{['لغتي','رياضيات','علوم'].map((subject,i)=><section className="subject" key={subject}><h4 className="subject-title">{subject}</h4><div className="subject-rows">{Array.from({length:counts[i]},(_,j)=><Cell key={j} n={j+1}/>)}</div></section>)}</div>
-<footer className="paper-footer">ورقة إجابة اختبار نافس — يُرجى تظليل دائرة واحدة لكل سؤال بقلم واضح</footer>
+<footer className="paper-footer" style={{position:"absolute",bottom:"8mm",left:"12mm",right:"12mm",textAlign:"center"}}>ورقة إجابة اختبار نافس — يُرجى تظليل دائرة واحدة لكل سؤال بقلم واضح</footer>
 </article>
 }
 export default function Sheets(){
