@@ -1,0 +1,3 @@
+export type AnswerKey = {questionNumber:number; correctOption:'A'|'B'|'C'|'D';points:number;skill?:string};
+export type StudentAnswer = {questionNumber:number;selectedOption:string|null};
+export function gradeAnswers(key:AnswerKey[],answers:StudentAnswer[]){const byQuestion=new Map(answers.map(a=>[a.questionNumber,a.selectedOption?.toUpperCase()]));const details=key.map(q=>({questionNumber:q.questionNumber,correct:byQuestion.get(q.questionNumber)===q.correctOption,points:byQuestion.get(q.questionNumber)===q.correctOption?q.points:0,skill:q.skill}));const total=key.reduce((s,q)=>s+q.points,0);const score=details.reduce((s,d)=>s+d.points,0);return {score,total,percentage:total?Math.round(score/total*10000)/100:0,details};}
