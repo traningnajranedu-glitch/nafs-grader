@@ -4,7 +4,6 @@ import * as XLSX from 'xlsx';
 import {supabase} from '../../lib/supabase';
 import JsBarcode from 'jsbarcode';
 type Student={code:string;name:string;grade:string;section:string};
-type School={id:string;name:string};
 const field={padding:'11px 12px',border:'1px solid #cbd5e1',borderRadius:9,minWidth:180,maxWidth:'100%'} as const;
 const button={background:'#087e83',color:'#fff',border:0,borderRadius:9,padding:'12px 20px',cursor:'pointer'} as const;
 const choices=['د','ج','ب','أ'];
@@ -24,10 +23,9 @@ return <article className="answer-paper">
 }
 export default function Sheets(){
 const [schoolNameInput,setSchoolNameInput]=useState(''),[gender,setGender]=useState(''),[stage,setStage]=useState(''),[grade,setGrade]=useState('');
-const [user,setUser]=useState(''),[schools,setSchools]=useState<School[]>([]),[school,setSchool]=useState(''),[students,setStudents]=useState<Student[]>([]),[counts,setCounts]=useState([20,20,20]),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[preview,setPreview]=useState(0);
+const [user,setUser]=useState(''),[students,setStudents]=useState<Student[]>([]),[counts,setCounts]=useState([20,20,20]),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[preview,setPreview]=useState(0);
 const papers=useRef<HTMLDivElement>(null);
 useEffect(()=>{if(!supabase)return;supabase.auth.getUser().then(r=>setUser(r.data.user?.email||''));const {data}=supabase.auth.onAuthStateChange((_,s)=>setUser(s?.user?.email||''));return()=>data.subscription.unsubscribe()},[]);
-useEffect(()=>{if(!user||!supabase)return;Promise.all([supabase.from('system_admins').select('user_id'),supabase.from('user_school_roles').select('school_id,schools(id,name)')]).then(async ([admin,roles])=>{if(admin.data?.length){const r=await supabase.from('schools').select('id,name').order('name');if(r.error){setStatus(r.error.message);return}setSchools(r.data||[]);setSchool(r.data?.[0]?.id||'')}else{const s=(roles.data||[]).map((x:any)=>x.schools).filter(Boolean);setSchools(s);setSchool(s[0]?.id||'')}})},[user]);
 function readStudents(file:File){setStatus('');file.arrayBuffer().then(buffer=>{
 const book=XLSX.read(buffer,{type:'array',cellText:true});const sheet=book.Sheets[book.SheetNames[0]];
 const grid=XLSX.utils.sheet_to_json<unknown[]>(sheet,{header:1,defval:'',raw:false}) as unknown[][];
