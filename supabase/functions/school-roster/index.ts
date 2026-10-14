@@ -1,7 +1,9 @@
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.0';
-const cors={'Access-Control-Allow-Origin':'https://nafs-grader-najran.vercel.app','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'};
+const allowedOrigin=(origin:string)=>origin==='https://nafs-grader-najran.vercel.app'||/^https:\/\/nafs-grader-[a-z0-9-]+-najran\.vercel\.app$/.test(origin);
+const corsFor=(req:Request)=>({'Access-Control-Allow-Origin':allowedOrigin(req.headers.get('origin')||'')?req.headers.get('origin')!:'https://nafs-grader-najran.vercel.app','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'});
 const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
 Deno.serve(async(req:Request)=>{
+ const cors=corsFor(req);
  const reply=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'}});
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors});
  if(req.method!=='POST')return reply({error:'طلب غير صالح'},405);
