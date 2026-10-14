@@ -1,6 +1,5 @@
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.0';
-const allowedOrigin=(origin:string)=>origin==='https://nafs-grader-najran.vercel.app'||/^https:\/\/nafs-grader-[a-z0-9-]+-najran\.vercel\.app$/.test(origin);
-const corsFor=(req:Request)=>({'Access-Control-Allow-Origin':allowedOrigin(req.headers.get('origin')||'')?req.headers.get('origin')!:'https://nafs-grader-najran.vercel.app','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'});
+const corsFor=(_req:Request)=>({'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Max-Age':'600'});
 const db=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
 Deno.serve(async(req:Request)=>{
  const cors=corsFor(req);
