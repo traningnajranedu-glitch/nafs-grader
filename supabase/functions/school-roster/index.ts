@@ -15,7 +15,7 @@ Deno.serve(async(req:Request)=>{
   const ip=req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()||'unknown';
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ip)))).map(x=>x.toString(16).padStart(2,'0')).join('');
   const {data,error}=await db.rpc('register_school_roster',{p_school:body.school,p_students:body.students,p_grade:typeof body.grade==='string'?body.grade:'',p_client:hash});
-  if(error)return reply({error:'تعذر حفظ بيانات الطلاب؛ حاول مرة أخرى'},400);
+  if(error){console.error('school-roster RPC failure',{code:error.code,message:error.message});const message=error.code==='23505'?'يوجد سجل مدني مكرر أو مرتبط ببيانات سابقة؛ راجع مدير النظام دون حذف بيانات الطلاب':error.code==='23503'?'بيانات المدرسة أو أحد الطلاب مرتبطة بسجل غير صالح؛ راجع مدير النظام':error.code==='23514'?'بعض بيانات الطلاب لا تستوفي شروط الحفظ؛ تحقق من السجلات والأسماء':error.code==='42501'?'تعذر حفظ الطلاب بسبب صلاحيات قاعدة البيانات؛ تواصل مع مدير النظام':'تعذر حفظ بيانات الطلاب في قاعدة البيانات (رمز '+String(error.code||'غير معروف')+')؛ تواصل مع مدير النظام';return reply({error:message},400)}
   return reply(data);
  }catch{return reply({error:'تعذر قراءة بيانات الطلاب'},400)}
 });
