@@ -1,0 +1,44 @@
+'use client';
+import {useCallback,useEffect,useRef,useState} from 'react';
+import {SUPPORT_STATUSES,SUPPORT_PRIORITIES,supportApi,supportAttachment,supportDate,trackingCode,type SupportDetail,type SupportCredential,type SupportStatus,type SupportPriority} from '../../lib/support';
+
+export default function SupportThread({initial,credential,admin=false,onUpdated}:{initial:SupportDetail;credential?:SupportCredential;admin?:boolean;onUpdated?:()=>void}){
+ const [detail,setDetail]=useState(initial),[body,setBody]=useState(''),[file,setFile]=useState<File|null>(null),[internal,setInternal]=useState(false),[status,setStatus]=useState(initial.ticket.status),[priority,setPriority]=useState(initial.ticket.priority),[resolution,setResolution]=useState(initial.ticket.resolution),[rating,setRating]=useState('5'),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[whatsapp,setWhatsapp]=useState('');
+ const input=useRef<HTMLInputElement>(null),requestId=useRef<string|null>(null),sending=useRef(false),alive=useRef(true),version=useRef(0),dirty=useRef(false);
+ const ticket=detail.ticket;
+ const refresh=useCallback(async()=>{const seq=++version.current;const next=await supportApi<SupportDetail>({action:admin?'admin_detail':'detail',ticket:initial.ticket.id,secret:credential?.secret});if(alive.current&&seq===version.current){setDetail(next);if(!dirty.current){setStatus(next.ticket.status);setPriority(next.ticket.priority);setResolution(next.ticket.resolution)}}},[admin,initial.ticket.id,credential?.secret]);
+ useEffect(()=>{alive.current=true;const timer=setInterval(()=>{if(!document.hidden&&!sending.current)void refresh().catch(()=>{})},30000);return()=>{alive.current=false;version.current++;clearInterval(timer)}},[refresh]);
+ useEffect(()=>{setWhatsapp('السلام عليكم، بخصوص بلاغكم رقم #'+ticket.number+' «'+ticket.title+'» لمدرسة '+ticket.schools.name+'، '+(ticket.status==='resolved'?'تمت معالجة البلاغ. الحل: '+ticket.resolution:'نأمل متابعة البلاغ وإضافة التفاصيل المطلوبة من صفحة طباعة أوراق الإجابات.')+'\nhttps://nafs-grader-najran.vercel.app/sheets')},[ticket.number,ticket.title,ticket.schools.name,ticket.status,ticket.resolution]);
+ async function send(schoolAction?:'close'|'reopen'){
+  if(sending.current)return;sending.current=true;setBusy(true);setNotice('');version.current++;
+  try{
+   const target=admin?status:schoolAction==='close'?'closed':schoolAction==='reopen'?'in_progress':undefined;
+   const content=body.trim()||(schoolAction==='close'?'أكدت المدرسة حل المشكلة وأغلقت البلاغ.':schoolAction==='reopen'?'المشكلة مستمرة؛ طلبت المدرسة إعادة فتح البلاغ.':admin&&target!==ticket.status?'تحديث الحالة: '+SUPPORT_STATUSES[status]:admin&&priority!==ticket.priority?'تحديث الأولوية: '+SUPPORT_PRIORITIES[priority]:admin&&resolution!==ticket.resolution?'تحديث الحل المسجل':'');
+   if(!content)throw Error('اكتب الرد أولًا');
+   if(admin&&['resolved','closed'].includes(status)&&!resolution.trim())throw Error('اكتب الحل قبل اعتماد الحل أو الإغلاق');
+   if(admin&&internal&&(status!==ticket.status||resolution!==ticket.resolution))throw Error('أرسل الحل أو تغيير الحالة كرد ظاهر للمدرسة');
+   requestId.current??=crypto.randomUUID();
+   const next=await supportApi<SupportDetail>({action:admin?'admin_reply':'reply',ticket:ticket.id,secret:credential?.secret,message_id:requestId.current,body:content,attachment:await supportAttachment(file),internal:admin&&internal,status:target,priority:admin?priority:undefined,resolution:admin&&resolution!==ticket.resolution?resolution:undefined,rating:schoolAction==='close'?Number(rating):undefined});
+   if(alive.current){setDetail(next);setBody('');setFile(null);if(input.current)input.current.value='';setStatus(next.ticket.status);setPriority(next.ticket.priority);setResolution(next.ticket.resolution);setInternal(false);dirty.current=false;setNotice('تم حفظ التحديث بنجاح');onUpdated?.()}requestId.current=null;
+  }catch(e){if(alive.current)setNotice(e instanceof Error?e.message:'تعذر حفظ الرد')}finally{sending.current=false;if(alive.current)setBusy(false)}
+ }
+ return <article className="support-thread">
+  <div className="support-heading"><div><h3>بلاغ #{ticket.number} — {ticket.title}</h3><p>{ticket.schools.name} · {ticket.service} · {ticket.kind}</p></div><span className={'support-badge '+ticket.status}>{SUPPORT_STATUSES[ticket.status]}</span></div>
+  <p>الأولوية: {SUPPORT_PRIORITIES[ticket.priority]} · رافع البلاغ: {ticket.reporter_name} {admin&&<>· واتساب: <b dir="ltr">+{ticket.phone}</b></>}</p><small>رفع في {supportDate(ticket.created_at)} · آخر تحديث {supportDate(ticket.updated_at)}</small>
+  {credential&&<details className="support-tracking"><summary>رمز متابعة البلاغ — احتفظ به</summary><p>هذا الرمز خاص بالبلاغ. استخدمه عند الانتقال إلى متصفح آخر.</p><code dir="ltr">{trackingCode(credential)}</code><button type="button" onClick={()=>void navigator.clipboard.writeText(trackingCode(credential)).then(()=>setNotice('تم نسخ رمز المتابعة')).catch(()=>setNotice('انسخ الرمز الظاهر يدويًا'))}>نسخ رمز المتابعة</button></details>}
+  {ticket.resolution&&<div className="support-solution"><strong>الحل المسجل</strong><p>{ticket.resolution}</p>{ticket.rating&&<span>تقييم المدرسة: {ticket.rating} / 5</span>}</div>}
+  <div className="support-timeline" aria-label="سجل البلاغ">{detail.messages.map(m=><div key={m.id} className={'support-message '+m.author_role+(m.internal?' internal':'')}><div className="support-heading"><strong>{m.author_role==='admin'?'مدير النظام':'المدرسة'}{m.internal?' — ملاحظة داخلية':''}</strong><small>{supportDate(m.created_at)}</small></div><p>{m.body}</p>{m.status_change&&<small>الحالة: {SUPPORT_STATUSES[m.status_change]}</small>}{m.attachment_name&&(m.attachment_url?<a href={m.attachment_url} target="_blank" rel="noreferrer">عرض المرفق: {m.attachment_name}</a>:<span>تعذر تحميل المرفق؛ اضغط تحديث البلاغ.</span>)}</div>)}</div>
+  <button type="button" className="support-secondary" disabled={busy} onClick={()=>void refresh().then(()=>setNotice('تم تحديث البلاغ')).catch(e=>setNotice(e.message))}>تحديث البلاغ</button>
+  {(admin||ticket.status!=='closed')&&<form onSubmit={e=>{e.preventDefault();void send()}}><h4>{admin?'الرد والمعالجة':'إضافة رد للبلاغ'}</h4>
+   {admin&&<div className="support-fields"><label>حالة البلاغ<select value={status} disabled={busy} onChange={e=>{dirty.current=true;setStatus(e.target.value as SupportStatus)}}>{Object.entries(SUPPORT_STATUSES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label>الأولوية<select value={priority} disabled={busy} onChange={e=>{dirty.current=true;setPriority(e.target.value as SupportPriority)}}>{Object.entries(SUPPORT_PRIORITIES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label className="support-wide">الحل المقترح / النهائي<textarea value={resolution} maxLength={6000} disabled={busy} onChange={e=>{dirty.current=true;setResolution(e.target.value)}}/></label></div>}
+   <label>نص الرد<textarea value={body} maxLength={6000} disabled={busy} onChange={e=>setBody(e.target.value)} placeholder="اكتب الرد أو التفاصيل الإضافية"/></label>
+   <label>مرفق اختياري — صورة أو PDF، حتى 5 ميجابايت<input ref={input} type="file" accept="image/png,image/jpeg,application/pdf" disabled={busy} onChange={e=>setFile(e.target.files?.[0]||null)}/></label>
+   {admin&&<label className="support-checkbox"><input type="checkbox" checked={internal} disabled={busy} onChange={e=>setInternal(e.target.checked)}/>ملاحظة داخلية خاصة بالإدارة</label>}
+   <button className="support-primary" disabled={busy} type="submit">{busy?'جارٍ الحفظ...':admin?'حفظ الرد والتحديث':'إرسال الرد'}</button>
+  </form>}
+  {!admin&&ticket.status==='resolved'&&<div className="support-actions"><label>تقييم الخدمة<select value={rating} disabled={busy} onChange={e=>setRating(e.target.value)}>{[5,4,3,2,1].map(n=><option key={n} value={n}>{n} / 5</option>)}</select></label><button type="button" className="support-primary" disabled={busy} onClick={()=>void send('close')}>تم الحل — إغلاق البلاغ</button><button type="button" className="support-secondary" disabled={busy} onClick={()=>void send('reopen')}>المشكلة مستمرة — إعادة الفتح</button></div>}
+  {!admin&&ticket.status==='closed'&&<button type="button" className="support-secondary" disabled={busy} onClick={()=>void send('reopen')}>إعادة فتح البلاغ</button>}
+  {admin&&<details className="support-whatsapp"><summary>التواصل مع رافع البلاغ عبر واتساب</summary><label>الرسالة<textarea value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} maxLength={8000}/></label><a className="support-primary" href={'https://wa.me/'+ticket.phone+'?text='+encodeURIComponent(whatsapp)} target="_blank" rel="noreferrer">فتح واتساب لمراجعة الرسالة وإرسالها</a><p>يتم الإرسال من واتساب بعد مراجعتك للرسالة.</p></details>}
+  {notice&&<p role="status" className="support-notice">{notice}</p>}
+ </article>;
+}
