@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import * as XLSX from 'xlsx';
 import {supabase} from '../../lib/supabase';
+import {readStudentRoster} from '../../lib/student-roster';
 import {Paper} from '../components/answer-paper';
 type Student={code:string;name:string;grade:string;section:string};
 const field={padding:'11px 12px',border:'1px solid #cbd5e1',borderRadius:9,minWidth:180,maxWidth:'100%'} as const;
@@ -13,20 +14,7 @@ const [students,setStudents]=useState<Student[]>([]),[counts,setCounts]=useState
 const papers=useRef<HTMLDivElement>(null);
 useEffect(()=>{if(!supabase)return;supabase.from('schools').select('id,name,gender,stage').order('name').then(r=>{if(r.error)setStatus('تعذر تحميل قائمة المدارس: '+r.error.message);else setSchoolOptions(r.data||[])})},[]);
 async function registerRoster(list:Student[]){const school=schoolOptions.find(s=>s.name===schoolNameInput&&s.gender===gender&&s.stage===stage);if(!school)throw Error('اختر الجنس والمرحلة واسم المدرسة قبل استيراد الطلاب');if(!supabase)throw Error('الاتصال غير متاح');const r=await supabase.functions.invoke('school-roster',{body:{school:school.id,grade,students:list.map(s=>({student_code:s.code,full_name:s.name}))}});if(r.error){let detail='تعذر حفظ بيانات الطلاب؛ أعد المحاولة';try{const body=await r.error.context?.json();if(typeof body?.error==='string')detail=body.error}catch{}throw Error(detail)}if(r.data?.error)throw Error(r.data.error);return r.data.registered}
-function readStudents(file:File){if(!schoolOptions.some(s=>s.name===schoolNameInput&&s.gender===gender&&s.stage===stage)){setStatus('اختر الجنس والمرحلة واسم المدرسة قبل استيراد الطلاب');return}setBusy(true);setStatus('جارٍ قراءة ملف الطلاب وحفظ البيانات...');setStudents([]);file.arrayBuffer().then(async buffer=>{
-const book=XLSX.read(buffer,{type:'array',cellText:true});const sheet=book.Sheets[book.SheetNames[0]];
-const grid=XLSX.utils.sheet_to_json<unknown[]>(sheet,{header:1,defval:'',raw:false}) as unknown[][];
-const clean=(v:unknown)=>String(v??'').trim().replace(/[\u0660-\u0669]/g,d=>String(d.charCodeAt(0)-0x660)).replace(/[\u06F0-\u06F9]/g,d=>String(d.charCodeAt(0)-0x6f0)).replace(/\s+/g,' ');
-const normalize=(v:unknown)=>clean(v).replace(/\s/g,'').replace(/ـ/g,'');
-let header=-1,nameCol=-1,codeCol=-1;
-for(let i=0;i<Math.min(grid.length,25);i++){const row=grid[i]||[];const n=row.findIndex(v=>['اسمالطالب','الطالب'].includes(normalize(v)));const id=row.findIndex(v=>['رقمالطالب','رقمالهوية','السجلالمدني'].includes(normalize(v)));if(n>=0&&id>=0&&n!==id){header=i;nameCol=n;codeCol=id;break}}
-if(header<0){setStatus('لم يتم العثور على عمودي اسم الطالب ورقم الطالب. تأكد من وجود صف عناوين مثل الصورة المرفقة.');return}
-const parsed:Student[]=[];for(let i=header+1;i<grid.length;i++){const row=grid[i]||[];const name=clean(row[nameCol]);const code=clean(row[codeCol]).replace(/\s/g,'');if(!name&&!code)continue;if(!name||!/^\d{10}$/.test(code)){setStatus('بيانات ناقصة في صف Excel رقم '+(i+1));return}parsed.push({name,code,grade:'',section:''})}
-if(!parsed.length){setStatus('لا توجد أسماء طلاب أسفل صف العناوين');return}
-if(new Set(parsed.map(s=>s.code)).size!==parsed.length){setStatus('توجد أرقام طلاب مكررة في الملف');return}
-if(parsed.length>250){setStatus('الحد الأقصى للدفعة الواحدة 250 طالبًا');return}
-await registerRoster(parsed);setStudents(parsed);setPreview(0);setStatus('تم حفظ بيانات '+parsed.length+' طالبًا وتجهيز دخولهم للإجابة الإلكترونية. إصدار PDF اختياري')
-}).catch(e=>setStatus(e instanceof Error?e.message:'تعذر قراءة ملف Excel')).finally(()=>setBusy(false))}
+function readStudents(file:File){if(!schoolOptions.some(s=>s.name===schoolNameInput&&s.gender===gender&&s.stage===stage)){setStatus('اختر الجنس والمرحلة واسم المدرسة قبل استيراد الطلاب');return}setBusy(true);setStatus('جارٍ قراءة ملف الطلاب وحفظ البيانات...');setStudents([]);readStudentRoster(file).then(async roster=>{if(roster.length>250)throw Error('الحد الأقصى للدفعة الواحدة 250 طالبًا');const parsed:Student[]=roster.map(s=>({name:s.full_name,code:s.student_code,grade:s.grade||'',section:''}));await registerRoster(parsed);setStudents(parsed);setPreview(0);setStatus('تم حفظ بيانات '+parsed.length+' طالبًا وتجهيز دخولهم للإجابة الإلكترونية. إصدار PDF اختياري')}).catch(e=>setStatus(e instanceof Error?e.message:'تعذر قراءة ملف Excel')).finally(()=>setBusy(false))}
 function template(){const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['','مدرسة: اسم المدرسة',''],['','اسم الطالب','رقم الطالب'],['','طالب تجريبي','1000000001']]);ws['C3'].t='s';ws['!cols']=[{wch:4},{wch:38},{wch:20}];XLSX.utils.book_append_sheet(wb,ws,'الطلاب');XLSX.writeFile(wb,'nafs-school-students-template.xlsx')}
 async function makePdf(){
 if(!students.length){setStatus('استورد ملف الطلاب أولاً');return}
