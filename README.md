@@ -35,3 +35,14 @@ Next.js + Supabase. مشروع قاعدة البيانات: `erqsricplegkowugkgw
 `/sheets` now saves each valid school Excel roster through the insert-only `school-roster` Edge Function immediately after import. PDF issuance is optional and remains separately logged. Existing identities are never overwritten or moved by the public workflow; discrepancies require the system admin. Online answer sheets are generated on entry from the approved, enabled exam.
 
 Historical print logs saved only school metadata and sheet counts, not student names/IDs or source Excel files. Schools must reimport their original roster once to enroll those students. The admin online page shows live school roster coverage; it does not claim complete recovery from print totals. Database: `database/school-roster.sql`; rollback integration checks: `tests/school-roster.sql`.
+
+
+## البلاغات والدعم الفني
+
+- أيقونة الخدمة أعلى `/sheets`؛ يتطلب رفع البلاغ اختيار المدرسة والجنس والمرحلة من القوائم.
+- يدخل رافع البلاغ اسمه ورقم واتساب وعنوان البلاغ وتفاصيله، مع مرفق PNG/JPG/PDF اختياري حتى 5 ميجابايت.
+- تُحفظ رموز متابعة البلاغات في المتصفح، ويمكن استعادة البلاغ من جهاز آخر باستخدام رمزه الخاص. اختيار المدرسة وحده لا يمنح الاطلاع على بلاغاتها.
+- تعرض صفحة مدير النظام `/workspace?tab=support` الحالات والأولويات والردود والملاحظات الداخلية والحلول والتقييمات، مع فلاتر وتحديث دوري.
+- زر واتساب يفتح رسالة قابلة للمراجعة في `wa.me`؛ الإرسال يدوي من واتساب.
+- قاعدة البيانات: `database/school-support.sql`، وواجهة الخادم: `supabase/functions/school-support`. لا يملك المتصفح وصولًا مباشرًا إلى جداول البلاغات أو المرفقات الخاصة.
+- التحقق: `npm run test:support` لاختبارات المرفقات وخصوصية الردود، و`tests/support.sql` لاختبار دورة البلاغ داخل معاملة تُلغى في نهايتها.
