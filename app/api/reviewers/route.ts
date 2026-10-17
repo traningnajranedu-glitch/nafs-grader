@@ -20,7 +20,7 @@ export async function POST(req:NextRequest){
  const username=String(body.username||'').trim().toLowerCase();
  const full_name=String(body.full_name||'').trim();
  if(!/^[a-z0-9._-]{3,40}$/.test(username)||full_name.length<2||String(body.password||'').length<10)return fail('أدخل اسمًا صحيحًا واسم مستخدم إنجليزي (3 أحرف فأكثر) وكلمة مرور من 10 أحرف فأكثر');
- const email=username+'@reviewers.nafs.invalid';
+ const email=username+'@reviewers.nafs.example.com';
  const created=await adminClient.auth.admin.createUser({email,password:body.password,email_confirm:true,user_metadata:{full_name,role:'nafs_reviewer'}});
  if(created.error||!created.data.user)return fail(created.error?.message||'تعذر إنشاء الحساب');
  const uid=created.data.user.id;
