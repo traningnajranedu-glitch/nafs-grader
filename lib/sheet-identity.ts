@@ -25,9 +25,16 @@ export async function oldIdentity(canvas:HTMLCanvasElement,text:string,schools:S
   }
   return '';
  }
- const clean=(v:string)=>v.split(/(?:السجل المدني|رقم الطالب|المرحلة|الجنس|الصف|اسم المدرسة)\s*[:：]/)[0].trim();
- const school=matched?.name||clean(extract(['اسم المدرسة','المدرسة','مدرسة']));
- const name=clean(extract(['اسم الطالب','اسم الطالبة','الطالب','الطالبة']));
+ const clean=(v:string)=>v.split(/(?:السجل المدني|رقم الطالب|المرحلة|الجنس|الصف|اسم المدرسة|اسم الطالب)\s*[:：]/)[0].replace(/[|،]+$/,'').trim();
+ const isSchool=(s:string)=>/مدرسة|ابتدائية|متوسطة|ثانوية|مجمع|الابتدائي|المتوسط|الثانوي/.test(s);
+ const isPerson=(s:string)=>/^[\u0621-\u064A\s]{6,}$/.test(s)&&s.trim().split(/\s+/).length>=2&&!/وزارة|تعليم|اختبار|إجابة|إجابات|المدرسة|الطالب|الطالبة|المملكة|إدارة|متوسط|ابتدائي|ثانوي/.test(s);
+ const explicitSchool=clean(extract(['اسم المدرسة','المدرسة']));
+ const schoolLine=lines.find(l=>isSchool(l)&&!/اسم الطالب|اسم الطالبة|السجل المدني/.test(l));
+ const school=matched?.name||(isSchool(explicitSchool)?explicitSchool:schoolLine?clean(schoolLine.replace(/^اسم المدرسة\s*[:：-]?\s*/,'').replace(/^المدرسة\s*[:：-]?\s*/,'')):'');
+ const explicitName=clean(extract(['اسم الطالب','اسم الطالبة']));
+ const nameCandidate=explicitName.replace(/^[\s:：-]+/,'').trim();
+ const otherCandidates=lines.map(l=>l.replace(/^(?:اسم الطالب|اسم الطالبة|الطالب|الطالبة)\s*[:：-]?\s*/,'').trim()).filter(isPerson);
+ const name=isPerson(nameCandidate)?nameCandidate:(otherCandidates.find(l=>l!==school&&!isSchool(l))||'');
  if(!code){
   const raw=extract(['السجل المدني','رقم الهوية','رقم الطالب','السجل','الهوية']);
   code=(raw.match(/[0-9٠-٩۰-۹][0-9٠-٩۰-۹\s-]{5,19}/)?.[0]||text.match(/(?:^|\D)([0-9٠-٩۰-۹]{10})(?!\d)/m)?.[1]||'')
