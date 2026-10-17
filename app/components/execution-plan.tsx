@@ -7,13 +7,13 @@ type Submission={id:string;status:string;created_at:string;student_id:string;stu
 type Ticket={id:string;status:string;created_at:string};
 const weeks=[{start:'2026-10-12',end:'2026-10-19',label:'الأسبوع الأول',title:'الاختبار وتوزيع الأوراق',dates:'12 – 18 أكتوبر',color:'#087e83'},{start:'2026-10-19',end:'2026-10-26',label:'الأسبوع الثاني',title:'التصحيح والمتابعة',dates:'19 – 25 أكتوبر',color:'#2563eb'},{start:'2026-10-26',end:'2026-11-02',label:'الأسبوع الثالث',title:'النتائج والتقارير',dates:'26 أكتوبر – 1 نوفمبر',color:'#a66b17'}];
 const box:React.CSSProperties={background:'#fff',border:'1px solid #e1e9ef',borderRadius:16,padding:18};
-const key=(s:string)=>s.trim().replace(/\\s+/g,' ').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
+const key=(s:string)=>s.trim().replace(/\s+/g,' ').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
 const inWeek=(date:string,w:typeof weeks[number])=>date>=w.start&&date<w.end;
 function Tile({name,value,extra}:{name:string;value:string|number;extra?:string}){return <div style={box}><div style={{fontSize:13,color:'#64748b'}}>{name}</div><div style={{fontSize:29,fontWeight:800,color:'#075d67',marginTop:6}}>{value}</div>{extra&&<small style={{color:'#64748b'}}>{extra}</small>}</div>}
 export default function ExecutionPlan({schools,prints}:{schools:School[];prints:Print[]}){
 const [active,setActive]=useState(0),[submissions,setSubmissions]=useState<Submission[]>([]),[tickets,setTickets]=useState<Ticket[]>([]),[error,setError]=useState(''),[loading,setLoading]=useState(false);
 async function refresh(){if(!supabase)return;setLoading(true);setError('');try{
-const all:Submission[]=[];for(let i=0;i<10000;i+=1000){const r=await supabase.from('submissions').select('id,status,created_at,student_id,students(school_id)').gte('created_at','2026-10-12').lt('created_at','2026-11-02').range(i,i+999);if(r.error)throw r.error;all.push(...(r.data||[]) as Submission[]);if((r.data||[]).length<1000)break}setSubmissions(all);
+const all:Submission[]=[];for(let i=0;i<10000;i+=1000){const r=await supabase.from('submissions').select('id,status,created_at,student_id,students(school_id)').gte('created_at','2026-10-12').lt('created_at','2026-11-02').range(i,i+999);if(r.error)throw r.error;all.push(...(r.data||[]).map(s=>({...s,students:Array.isArray(s.students)?s.students[0]??null:s.students??null}) as Submission));if((r.data||[]).length<1000)break}setSubmissions(all);
 const t=await supabase.from('support_tickets').select('id,status,created_at').gte('created_at','2026-10-12').lt('created_at','2026-11-02').limit(1000);if(t.error)throw t.error;setTickets((t.data||[]) as Ticket[]);
 }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setLoading(false)}}
 useEffect(()=>{void refresh()},[]);
