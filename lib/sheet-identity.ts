@@ -8,9 +8,19 @@ export async function oldIdentity(canvas:HTMLCanvasElement,text:string,schools:S
  if(!text.trim()){
   if(!ocr)throw Error('محرك قراءة النص غير متاح');
   const crop=document.createElement('canvas');
-  crop.width=canvas.width;crop.height=Math.round(canvas.height*.38);
-  crop.getContext('2d')!.drawImage(canvas,0,0,canvas.width,canvas.height*.38,0,0,crop.width,crop.height);
-  const r=await ocr.recognize(crop);text=r.data.text||'';confidence=r.data.confidence||0;crop.width=0;crop.height=0;
+  const sourceHeight=Math.round(canvas.height*.48);
+  const scale=canvas.width<1800?Math.min(2.3,1800/canvas.width):1;
+  crop.width=Math.round(canvas.width*scale);crop.height=Math.round(sourceHeight*scale);
+  const ctx=crop.getContext('2d')!;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(canvas,0,0,canvas.width,sourceHeight,0,0,crop.width,crop.height);
+  const r=await ocr.recognize(crop);text=r.data.text||'';confidence=r.data.confidence||0;
+  if(!/(?:اسم\\s*الطالب|اسم\\s*الطالبة)/.test(text)||!/(?:اسم\\s*المدرسة|المدرسة)/.test(text)){
+   const contrast=ctx.getImageData(0,0,crop.width,crop.height);
+   for(let i=0;i<contrast.data.length;i+=4){const lum=.299*contrast.data[i]+.587*contrast.data[i+1]+.114*contrast.data[i+2];const val=lum>175?255:lum<110?0:Math.round((lum-110)*255/65);contrast.data[i]=val;contrast.data[i+1]=val;contrast.data[i+2]=val;}
+   ctx.putImageData(contrast,0,0);
+   const enhanced=await ocr.recognize(crop);if((enhanced.data.text||'').trim())text+='\\n'+enhanced.data.text;
+  }
+  crop.width=0;crop.height=0;
  }
  text=text.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,'');
  const norm=normalize(text),found=schools.filter(s=>norm.includes(normalize(s.name)));
