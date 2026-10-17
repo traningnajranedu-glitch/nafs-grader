@@ -25,16 +25,30 @@ export async function oldIdentity(canvas:HTMLCanvasElement,text:string,schools:S
   }
   return '';
  }
- const clean=(v:string)=>v.split(/(?:السجل المدني|رقم الطالب|المرحلة|الجنس|الصف|اسم المدرسة|اسم الطالب)\s*[:：]/)[0].replace(/[|،]+$/,'').trim();
- const isSchool=(s:string)=>/مدرسة|ابتدائية|متوسطة|ثانوية|مجمع|الابتدائي|المتوسط|الثانوي/.test(s);
- const isPerson=(s:string)=>/^[\u0621-\u064A\s]{6,}$/.test(s)&&s.trim().split(/\s+/).length>=2&&!/وزارة|تعليم|اختبار|إجابة|إجابات|المدرسة|الطالب|الطالبة|المملكة|إدارة|متوسط|ابتدائي|ثانوي/.test(s);
- const explicitSchool=clean(extract(['اسم المدرسة','المدرسة']));
- const schoolLine=lines.find(l=>isSchool(l)&&!/اسم الطالب|اسم الطالبة|السجل المدني/.test(l));
- const school=matched?.name||(isSchool(explicitSchool)?explicitSchool:schoolLine?clean(schoolLine.replace(/^اسم المدرسة\s*[:：-]?\s*/,'').replace(/^المدرسة\s*[:：-]?\s*/,'')):'');
- const explicitName=clean(extract(['اسم الطالب','اسم الطالبة']));
- const nameCandidate=explicitName.replace(/^[\s:：-]+/,'').trim();
- const otherCandidates=lines.map(l=>l.replace(/^(?:اسم الطالب|اسم الطالبة|الطالب|الطالبة)\s*[:：-]?\s*/,'').trim()).filter(isPerson);
- const name=isPerson(nameCandidate)?nameCandidate:(otherCandidates.find(l=>l!==school&&!isSchool(l))||'');
+ // Keep OCR fields separate: a label's value may appear on the following line in RTL scans.
+ const labels=/(?:اسم\s*المدرسة|المدرسة|اسم\s*الطالب(?:ة)?|السجل\s*المدني|رقم\s*الهوية|رقم\s*الطالب|الجنس|المرحلة|الصف)/g;
+ const tidy=(v:string)=>v.replace(/[\u064B-\u065F\u0670]/g,'').replace(/\s+/g,' ').replace(/^[\s:：\-|،]+|[\s:：\-|،]+$/g,'').trim();
+ const isolate=(v:string)=>tidy(v.split(labels)[0]);
+ const garbage=/(?:التظليل|الصحيح|غير\s*مقروء|ورقة|الاختبار|الإجابة|الإجابات|السؤال|تعليمات|وزارة|التعليم|نموذج|الدرجة|اسم\s*الطالب|السجل|الجنس|المرحلة|الصف)/;
+ const isSchool=(v:string)=>{const s=tidy(v);return s.length>=5&&s.length<=115&&!/[A-Za-z@®©]/.test(s)&&!/التظليل|الصحيح|السؤال|الإجابة|الطالب|السجل/.test(s)&&/(?:مدرسة|ابتدائي|متوسط|ثانوي|مجمع)/.test(s)};
+ const isPerson=(v:string)=>{const s=tidy(v);return s.length>=7&&s.length<=85&&!/[A-Za-z0-9٠-٩۰-۹@®©]/.test(s)&&!garbage.test(s)&&!isSchool(s)&&/^[\u0621-\u064A\s]+$/.test(s)&&s.split(/\s+/).length>=2};
+ const afterLabel=(line:string,label:RegExp)=>{const m=line.match(label);return m?isolate(line.slice((m.index||0)+m[0].length)):''};
+ const schoolCandidates:string[]=[];
+ const personCandidates:string[]=[];
+ for(let i=0;i<lines.length;i++){
+  const line=tidy(lines[i]);
+  const schoolValue=afterLabel(line,/(?:اسم\s*المدرسة|المدرسة)\s*[:：\-]?/);
+  if(isSchool(schoolValue))schoolCandidates.push(schoolValue);
+  if(isSchool(line))schoolCandidates.push(isolate(line));
+  const nameValue=afterLabel(line,/(?:اسم\s*الطالب(?:ة)?|الطالب(?:ة)?)\s*[:：\-]?/);
+  if(isPerson(nameValue))personCandidates.push(nameValue);
+  // OCR often places the value on the next line; do not treat headings as names.
+  if(/اسم\s*الطالب(?:ة)?/.test(line)&&i+1<lines.length&&isPerson(lines[i+1]))personCandidates.push(tidy(lines[i+1]));
+  if(isPerson(line))personCandidates.push(line);
+ }
+ const school=matched?.name||schoolCandidates[0]||'';
+ // Never guess a student's name from a school name, printed instructions or an answer label.
+ const name=personCandidates.find(v=>v!==school&&!schoolCandidates.includes(v))||'';
  if(!code){
   const raw=extract(['السجل المدني','رقم الهوية','رقم الطالب','السجل','الهوية']);
   code=(raw.match(/[0-9٠-٩۰-۹][0-9٠-٩۰-۹\s-]{5,19}/)?.[0]||text.match(/(?:^|\D)([0-9٠-٩۰-۹]{10})(?!\d)/m)?.[1]||'')
