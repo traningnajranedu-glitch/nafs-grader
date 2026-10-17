@@ -14,11 +14,11 @@ export async function oldIdentity(canvas:HTMLCanvasElement,text:string,schools:S
   const ctx=crop.getContext('2d')!;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
   ctx.drawImage(canvas,0,0,canvas.width,sourceHeight,0,0,crop.width,crop.height);
   const r=await ocr.recognize(crop);text=r.data.text||'';confidence=r.data.confidence||0;
-  if(!/(?:اسم\\s*الطالب|اسم\\s*الطالبة)/.test(text)||!/(?:اسم\\s*المدرسة|المدرسة)/.test(text)){
+  if(!/(?:اسم\s*الطالب|اسم\s*الطالبة)/.test(text)||!/(?:اسم\s*المدرسة|المدرسة)/.test(text)){
    const contrast=ctx.getImageData(0,0,crop.width,crop.height);
    for(let i=0;i<contrast.data.length;i+=4){const lum=.299*contrast.data[i]+.587*contrast.data[i+1]+.114*contrast.data[i+2];const val=lum>175?255:lum<110?0:Math.round((lum-110)*255/65);contrast.data[i]=val;contrast.data[i+1]=val;contrast.data[i+2]=val;}
    ctx.putImageData(contrast,0,0);
-   const enhanced=await ocr.recognize(crop);if((enhanced.data.text||'').trim())text+='\\n'+enhanced.data.text;
+   const enhanced=await ocr.recognize(crop);if((enhanced.data.text||'').trim())text+='\n'+enhanced.data.text;
   }
   crop.width=0;crop.height=0;
  }
