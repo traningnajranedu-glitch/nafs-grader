@@ -54,7 +54,7 @@ export async function oldIdentity(canvas:HTMLCanvasElement,text:string,schools:S
   if(isPerson(nameValue))personCandidates.push(nameValue);
   // OCR often places the value on the next line; do not treat headings as names.
   if(/اسم\s*الطالب(?:ة)?/.test(line)&&i+1<lines.length&&isPerson(lines[i+1]))personCandidates.push(tidy(lines[i+1]));
-  if(isPerson(line))personCandidates.push(line);
+  if(/اسم\s*الطالب(?:ة)?/.test(line)&&i>0&&isPerson(lines[i-1]))personCandidates.push(tidy(lines[i-1]));
  }
  const school=matched?.name||schoolCandidates[0]||'';
  // Never guess a student's name from a school name, printed instructions or an answer label.
