@@ -13,7 +13,7 @@ export async function POST(req:NextRequest){
  if(authError||!user)return fail('جلسة غير صالحة',401);
  const {data:admin,error:adminError}=await adminClient.from('system_admins').select('user_id').eq('user_id',user.id).maybeSingle();
  if(adminError||!admin)return fail('العملية لمدير النظام فقط',403);
- let body:{action?:string;username?:string;password?:string;full_name?:string;user_id?:string;school_ids?:string[];active?:boolean};
+ let body:{action?:string;username?:string;password?:string;full_name?:string;user_id?:string;school_ids?:string[];exam_ids?:string[];active?:boolean};
  try{body=await req.json()}catch{return fail('بيانات الطلب غير صالحة')}
  try{
  if(body.action==='create'){
@@ -40,6 +40,21 @@ export async function POST(req:NextRequest){
  if(toAdd.length){const a=await adminClient.from('nafs_reviewer_schools').insert(toAdd.map(school_id=>({reviewer_id:id,school_id})));if(a.error)return fail(a.error.message)}
  const toRemove=before.filter(x=>!ids.includes(x));
  if(toRemove.length){const d=await adminClient.from('nafs_reviewer_schools').delete().eq('reviewer_id',id).in('school_id',toRemove);if(d.error)return fail(d.error.message)}
+ return NextResponse.json({ok:true});
+ }
+ if(body.action==='assign_exams'){
+ const id=String(body.user_id||'');
+ const ids=[...new Set((body.exam_ids||[]).filter(x=>/^[0-9a-f-]{36}$/i.test(x)))];
+ const reviewer=await adminClient.from('nafs_reviewers').select('user_id').eq('user_id',id).maybeSingle();
+ if(reviewer.error||!reviewer.data)return fail('المصحح غير موجود');
+ if(ids.length){const valid=await adminClient.from('exams').select('id').in('id',ids).eq('status','approved').is('deleted_at',null);if(valid.error)return fail(valid.error.message);if((valid.data||[]).length!==ids.length)return fail('توجد اختبارات غير معتمدة أو محذوفة');}
+ const existing=await adminClient.from('nafs_reviewer_exams').select('exam_id').eq('reviewer_id',id);
+ if(existing.error)return fail(existing.error.message);
+ const before=(existing.data||[]).map(x=>x.exam_id);
+ const toAdd=ids.filter(x=>!before.includes(x));
+ if(toAdd.length){const r=await adminClient.from('nafs_reviewer_exams').insert(toAdd.map(exam_id=>({reviewer_id:id,exam_id})));if(r.error)return fail(r.error.message)}
+ const toRemove=before.filter(x=>!ids.includes(x));
+ if(toRemove.length){const r=await adminClient.from('nafs_reviewer_exams').delete().eq('reviewer_id',id).in('exam_id',toRemove);if(r.error)return fail(r.error.message)}
  return NextResponse.json({ok:true});
  }
  if(body.action==='status'){
