@@ -46,10 +46,11 @@ export function readLegacy(image:ImageData){
  try{base=templateGrid(image)}catch{if(!detected)throw Error('أبعاد الورقة لا تطابق النموذج المعتمد')}
  const evaluate=(grid:Point[][][])=>{
   const readings=grid.map(rows=>rows.map((centers,r)=>readRow(image,centers,r+1)));
-  const first=readings.flatMap(g=>g.slice(0,10));
-  const clear=first.filter(r=>r.state==='clear').length;
-  const signal=first.reduce((sum,r)=>{const ordered=[...r.ratios].sort((a,b)=>b-a);return sum+Math.max(0,ordered[0]-ordered[1])},0);
-  return {readings,quality:clear*2+signal};
+  const sample=readings.flatMap(g=>g); // V4: score the entire 60-question grid, not only the first ten rows.
+  const clear=sample.filter(r=>r.state==='clear').length;
+  const signal=sample.reduce((sum,r)=>{const ordered=[...r.ratios].sort((a,b)=>b-a);return sum+Math.max(0,ordered[0]-ordered[1])},0);
+  const ambiguous=sample.filter(r=>r.state==='multiple'||r.state==='uncertain').length;
+  return {readings,quality:clear*2+signal-ambiguous*.25};
  };
  let best=detected?evaluate(detected):null;
  const shift=[-.006,-.003,0,.003,.006];
