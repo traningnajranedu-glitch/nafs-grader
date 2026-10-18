@@ -42,28 +42,30 @@ function templateGrid(image:ImageData){
  return groupsX.map(xs=>Array.from({length:20},(_,r)=>[...xs].reverse().map(x=>({x:x*w,y:(first+(last-first)*r/19)*h})))).reverse();
 }
 export function readLegacy(image:ImageData){
- let detected:Point[][][]|null=null;
- try{detected=legacyGrid(image)}catch{}
- let base:Point[][][]|null=null;
- try{base=templateGrid(image)}catch{if(!detected)throw Error('أبعاد الورقة لا تطابق النموذج المعتمد')}
+ // V4: Prefer the calibrated printed template over the ink-maximizing legacy
+ // detector. Ink-based grid selection can lock onto filled bubbles rather than
+ // their printed centers, silently changing the selected Arabic letter.
+ let template:Point[][][]|null=null;
+ try{template=templateGrid(image)}catch{}
  const evaluate=(grid:Point[][][])=>{
   const readings=grid.map(rows=>rows.map((centers,r)=>readRow(image,centers,r+1)));
-  const sample=readings.flatMap(g=>g); // V4: score the entire 60-question grid, not only the first ten rows.
-  const clear=sample.filter(r=>r.state==='clear').length;
-  const signal=sample.reduce((sum,r)=>{const ordered=[...r.ratios].sort((a,b)=>b-a);return sum+Math.max(0,ordered[0]-ordered[1])},0);
-  const ambiguous=sample.filter(r=>r.state==='multiple'||r.state==='uncertain').length;
-  return {readings,quality:clear*2+signal-ambiguous*.25};
+  const first=readings.flatMap(g=>g.slice(0,10));
+  const confident=first.filter(r=>r.state==='clear').length;
+  return {readings,confident};
  };
- let best=detected?evaluate(detected):null;
- const shift=[-.006,-.003,0,.003,.006];
- for(const dx of shift)for(const dy of shift){
-  if(!base)continue;
-  const grid=base.map(rows=>rows.map(centers=>centers.map(p=>({x:p.x+dx*image.width,y:p.y+dy*image.height}))));
-  const result=evaluate(grid);
-  if(!best||result.quality>best.quality)best=result;
+ if(template){
+  const result=evaluate(template);
+  // On the official form, the fixed grid is independent of how students shade.
+  // Never optimize offsets against ink density: that biases the grid to wrong marks.
+  if(result.confident>=12)return result.readings;
  }
- if(!best||best.readings.flatMap(g=>g.slice(0,10)).filter(r=>r.state==='clear'||r.state==='multiple').length<12)throw Error('تعذر محاذاة دوائر الإجابة بدقة كافية؛ أعد مسح الورقة');
- return best.readings;
+ // Fallback for genuinely different legacy scans; do not overwrite a valid
+ // template result just because another alignment has darker pixels.
+ try{
+  const detected=evaluate(legacyGrid(image));
+  if(detected.confident>=12)return detected.readings;
+ }catch{}
+ throw Error('تعذر التحقق من محاذاة الدوائر؛ لا يمكن اعتماد الإجابات قبل إعادة المسح أو المراجعة');
 }
 export async function renderPdf(file:File,onPage:(canvas:HTMLCanvasElement,text:string,page:number,total:number)=>Promise<void>){if(file.size>50*1024*1024)throw Error('الحد الأقصى 50 ميجابايت');const pdfjs=await import('pdfjs-dist');pdfjs.GlobalWorkerOptions.workerSrc='/pdf.worker.min.mjs';const pdf=await pdfjs.getDocument({data:await file.arrayBuffer(),isEvalSupported:false}).promise;try{if(pdf.numPages>250)throw Error('الحد الأقصى 250 صفحة');for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n),v=p.getViewport({scale:1500/p.getViewport({scale:1}).width});const c=document.createElement('canvas');c.width=Math.round(v.width);c.height=Math.round(v.height);await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;const t=await p.getTextContent();await onPage(c,t.items.map((x:any)=>x.str||'').join('\n'),n,pdf.numPages);c.width=0;c.height=0;p.cleanup()}}finally{await pdf.destroy()}}
 export async function decodeMeta(c:HTMLCanvasElement):Promise<SheetMeta|null>{try{const {BrowserQRCodeReader}=await import('@zxing/browser');const text=new BrowserQRCodeReader().decodeFromCanvas(c).getText();const parsed=JSON.parse(text);if(parsed.v===2&&['student','key'].includes(parsed.kind)&&['school','schoolId','name','code','gender','stage','grade'].every(k=>typeof parsed[k]==='string'&&parsed[k].length<=300)&&Array.isArray(parsed.anchors)&&parsed.anchors.length===3&&parsed.anchors.every((a:any)=>Array.isArray(a)&&a.length===3&&a.every((p:any)=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=794&&p.y>=0&&p.y<=1123)))return parsed;}catch{}return null}
