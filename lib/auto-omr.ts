@@ -1,4 +1,4 @@
-import {classify,type Point,type Reading} from './omr';
+import {classifyHybrid,type Point,type Reading} from './omr';
 export type SheetMeta={v:2;kind:'student'|'key';school:string;schoolId:string;name:string;code:string;gender:string;stage:string;grade:string;anchors:Point[][]};
 export const normalize=(s:string)=>s.trim().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 export function components(image:ImageData){const {width:w,height:h,data}=image;const visited=new Uint8Array(w*h),stack:number[]=[];const out:{x:number;y:number;w:number;h:number;area:number}[]=[];const black=(i:number)=>data[i*4]*.299+data[i*4+1]*.587+data[i*4+2]*.114<175;for(let i=0;i<w*h;i++){if(visited[i]||!black(i))continue;visited[i]=1;stack.push(i);let minX=w,maxX=0,minY=h,maxY=0,area=0;while(stack.length){const p=stack.pop()!,x=p%w,y=Math.floor(p/w);area++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);for(const n of [x>0?p-1:-1,x<w-1?p+1:-1,y>0?p-w:-1,y<h-1?p+w:-1])if(n>=0&&!visited[n]&&black(n)){visited[n]=1;stack.push(n)}}if(area>15)out.push({x:(minX+maxX)/2,y:(minY+maxY)/2,w:maxX-minX+1,h:maxY-minY+1,area})}return out}
@@ -22,7 +22,7 @@ function readRow(image:ImageData,centers:Point[],question:number){
   }
   return {dark:n?dark/n:0,faint:n?faint/n:0};
  });
- return classify(ratios.map(x=>x.dark),question,ratios.map(x=>x.faint));
+ return classifyHybrid(ratios.map(x=>x.dark),ratios.map(x=>x.faint),question);
 }
 export function autoRead(image:ImageData,anchors:Point[][]){const map=markerTransform(image);return anchors.map(points=>Array.from({length:20},(_,r)=>{const centers=Array.from({length:4},(_,c)=>map({x:points[0].x+c*(points[1].x-points[0].x)/3+r*(points[2].x-points[0].x)/19,y:points[0].y+c*(points[1].y-points[0].y)/3+r*(points[2].y-points[0].y)/19}));return readRow(image,centers,r+1)}))}
 export function legacyGrid(image:ImageData){
