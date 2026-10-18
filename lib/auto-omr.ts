@@ -1,4 +1,4 @@
-import {classify,type Point,type Reading} from './omr';
+import {classifyHybrid,type Point,type Reading} from './omr';
 export type SheetMeta={v:2;kind:'student'|'key';school:string;schoolId:string;name:string;code:string;gender:string;stage:string;grade:string;anchors:Point[][]};
 export const normalize=(s:string)=>s.trim().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ');
 export function components(image:ImageData){const {width:w,height:h,data}=image;const visited=new Uint8Array(w*h),stack:number[]=[];const out:{x:number;y:number;w:number;h:number;area:number}[]=[];const black=(i:number)=>data[i*4]*.299+data[i*4+1]*.587+data[i*4+2]*.114<175;for(let i=0;i<w*h;i++){if(visited[i]||!black(i))continue;visited[i]=1;stack.push(i);let minX=w,maxX=0,minY=h,maxY=0,area=0;while(stack.length){const p=stack.pop()!,x=p%w,y=Math.floor(p/w);area++;minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);for(const n of [x>0?p-1:-1,x<w-1?p+1:-1,y>0?p-w:-1,y<h-1?p+w:-1])if(n>=0&&!visited[n]&&black(n)){visited[n]=1;stack.push(n)}}if(area>15)out.push({x:(minX+maxX)/2,y:(minY+maxY)/2,w:maxX-minX+1,h:maxY-minY+1,area})}return out}
@@ -22,7 +22,7 @@ function readRow(image:ImageData,centers:Point[],question:number){
   }
   return {dark:n?dark/n:0,faint:n?faint/n:0};
  });
- return classify(ratios.map(x=>x.dark),question,ratios.map(x=>x.faint));
+ return classifyHybrid(ratios.map(x=>x.dark),ratios.map(x=>x.faint),question);
 }
 export function autoRead(image:ImageData,anchors:Point[][]){const map=markerTransform(image);return anchors.map(points=>Array.from({length:20},(_,r)=>{const centers=Array.from({length:4},(_,c)=>map({x:points[0].x+c*(points[1].x-points[0].x)/3+r*(points[2].x-points[0].x)/19,y:points[0].y+c*(points[1].y-points[0].y)/3+r*(points[2].y-points[0].y)/19}));return readRow(image,centers,r+1)}))}
 export function legacyGrid(image:ImageData){
@@ -35,32 +35,25 @@ export function legacyGrid(image:ImageData){
 function templateGrid(image:ImageData){
  const {width:w,height:h}=image;
  if(w/h<.67||w/h>.79)throw Error('أبعاد الورقة لا تطابق نموذج نافس');
+ // Legacy Arabic sheets: columns progress left-to-right D,C,B,A.
  const groupsX=[[.154,.202,.251,.299],[.417,.465,.514,.563],[.680,.728,.777,.826]];
  const first=.389,last=.887;
- return groupsX.map(xs=>Array.from({length:20},(_,r)=>xs.map(x=>({x:x*w,y:(first+(last-first)*r/19)*h})))).reverse();
+ // Option indices are A,B,C,D from RIGHT to LEFT on Arabic sheets.
+ return groupsX.map(xs=>Array.from({length:20},(_,r)=>[...xs].reverse().map(x=>({x:x*w,y:(first+(last-first)*r/19)*h})))).reverse();
 }
 export function readLegacy(image:ImageData){
- let detected:Point[][][]|null=null;
- try{detected=legacyGrid(image)}catch{}
- let base:Point[][][]|null=null;
- try{base=templateGrid(image)}catch{if(!detected)throw Error('أبعاد الورقة لا تطابق النموذج المعتمد')}
- const evaluate=(grid:Point[][][])=>{
+ // Detect the actual printed bubble centers first. A template offset by even
+ // one bubble can produce plausible but consistently incorrect answers.
+ try{
+  const grid=legacyGrid(image);
   const readings=grid.map(rows=>rows.map((centers,r)=>readRow(image,centers,r+1)));
-  const first=readings.flatMap(g=>g.slice(0,10));
-  const clear=first.filter(r=>r.state==='clear').length;
-  const signal=first.reduce((sum,r)=>{const ordered=[...r.ratios].sort((a,b)=>b-a);return sum+Math.max(0,ordered[0]-ordered[1])},0);
-  return {readings,quality:clear*2+signal};
- };
- let best=detected?evaluate(detected):null;
- const shift=[-.006,-.003,0,.003,.006];
- for(const dx of shift)for(const dy of shift){
-  if(!base)continue;
-  const grid=base.map(rows=>rows.map(centers=>centers.map(p=>({x:p.x+dx*image.width,y:p.y+dy*image.height}))));
-  const result=evaluate(grid);
-  if(!best||result.quality>best.quality)best=result;
- }
- if(!best||best.readings.flatMap(g=>g.slice(0,10)).filter(r=>r.state==='clear'||r.state==='multiple').length<12)throw Error('تعذر محاذاة دوائر الإجابة بدقة كافية؛ أعد مسح الورقة');
- return best.readings;
+  const first=readings.flatMap(group=>group.slice(0,10));
+  if(first.filter(r=>r.state==='clear').length>=12)return readings;
+ }catch{}
+ // A fixed-position fallback is not safe for graded results: a page can be
+ // cropped, resized, rotated or shifted while retaining the same aspect ratio.
+ // Require human review rather than silently assigning the wrong option.
+ throw Error('تعذر تحديد مراكز دوائر الإجابة المطبوعة بثقة؛ لا يمكن التصحيح آليًا لهذه الورقة. يرجى إعادة المسح بوضوح أو المراجعة اليدوية.');
 }
 export async function renderPdf(file:File,onPage:(canvas:HTMLCanvasElement,text:string,page:number,total:number)=>Promise<void>){if(file.size>50*1024*1024)throw Error('الحد الأقصى 50 ميجابايت');const pdfjs=await import('pdfjs-dist');pdfjs.GlobalWorkerOptions.workerSrc='/pdf.worker.min.mjs';const pdf=await pdfjs.getDocument({data:await file.arrayBuffer(),isEvalSupported:false}).promise;try{if(pdf.numPages>250)throw Error('الحد الأقصى 250 صفحة');for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n),v=p.getViewport({scale:1500/p.getViewport({scale:1}).width});const c=document.createElement('canvas');c.width=Math.round(v.width);c.height=Math.round(v.height);await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;const t=await p.getTextContent();await onPage(c,t.items.map((x:any)=>x.str||'').join('\n'),n,pdf.numPages);c.width=0;c.height=0;p.cleanup()}}finally{await pdf.destroy()}}
 export async function decodeMeta(c:HTMLCanvasElement):Promise<SheetMeta|null>{try{const {BrowserQRCodeReader}=await import('@zxing/browser');const text=new BrowserQRCodeReader().decodeFromCanvas(c).getText();const parsed=JSON.parse(text);if(parsed.v===2&&['student','key'].includes(parsed.kind)&&['school','schoolId','name','code','gender','stage','grade'].every(k=>typeof parsed[k]==='string'&&parsed[k].length<=300)&&Array.isArray(parsed.anchors)&&parsed.anchors.length===3&&parsed.anchors.every((a:any)=>Array.isArray(a)&&a.length===3&&a.every((p:any)=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=794&&p.y>=0&&p.y<=1123)))return parsed;}catch{}return null}

@@ -1,6 +1,11 @@
 const assert=require('node:assert/strict');
 const ts=require('typescript'),fs=require('fs'),vm=require('vm');
-const moduleObj={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/omr.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:moduleObj.exports,module:moduleObj});const {classify,readBubbles}=moduleObj.exports;
+const moduleObj={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/omr.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:moduleObj.exports,module:moduleObj});const {classify,classifyHybrid,readBubbles}=moduleObj.exports;
 assert.equal(classify([.12,.9,.08,.15],1).selected,'B');assert.equal(classify([.1,.1,.1,.1],1).state,'blank');assert.equal(classify([.8,.9,.1,.1],1).state,'multiple');assert.equal(classify([.42,.15,.1,.1],1).state,'uncertain');assert.equal(classify([.6,.5,.1,.1],1).state,'uncertain');
 assert.equal(classify([.05,.1,.05,.05],1,[.05,.8,.05,.05]).state,'uncertain');
-const width=400,height=900,data=new Uint8ClampedArray(width*height*4).fill(255);const pts=[{x:250,y:100},{x:130,y:100},{x:250,y:670}];for(let y=90;y<=110;y++)for(let x=200;x<=220;x++){if((x-210)**2+(y-100)**2<100){const i=(y*width+x)*4;data[i]=data[i+1]=data[i+2]=0}}const result=readBubbles({width,height,data},pts,[1,2]);assert.equal(result[0].selected,'B');assert.equal(result[1].state,'blank');assert.throws(()=>readBubbles({width,height,data},pts,[21]));assert.throws(()=>readBubbles({width,height,data},[pts[0],pts[0],pts[2]],[1]));console.log('9 OMR checks passed');
+const width=400,height=900,data=new Uint8ClampedArray(width*height*4).fill(255);const pts=[{x:250,y:100},{x:130,y:100},{x:250,y:670}];for(let y=90;y<=110;y++)for(let x=200;x<=220;x++){if((x-210)**2+(y-100)**2<100){const i=(y*width+x)*4;data[i]=data[i+1]=data[i+2]=0}}const result=readBubbles({width,height,data},pts,[1,2]);assert.equal(result[0].selected,'B');assert.equal(result[1].state,'blank');assert.throws(()=>readBubbles({width,height,data},pts,[21]));assert.throws(()=>readBubbles({width,height,data},[pts[0],pts[0],pts[2]],[1]));assert.equal(classifyHybrid([.07,.63,.06,.04],[.12,.71,.1,.09],1).state,'clear');
+assert.equal(classifyHybrid([.04,.14,.07,.05],[.12,.25,.14,.11],1).state,'blank');
+assert.equal(classifyHybrid([.62,.58,.08,.05],[.71,.67,.14,.1],1).state,'multiple');
+assert.equal(classifyHybrid([.18,.38,.11,.1],[.24,.48,.18,.15],1).state,'uncertain');
+assert.equal(classifyHybrid([.18,.38,.11,.1],[.24,.48,.18,.15],1).selected,'B');
+console.log('14 OMR checks passed');
