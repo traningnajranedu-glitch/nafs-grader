@@ -35,7 +35,7 @@ export function legacyGrid(image:ImageData){
 function templateGrid(image:ImageData){
  const {width:w,height:h}=image;
  if(w/h<.67||w/h>.79)throw Error('أبعاد الورقة لا تطابق نموذج نافس');
- const groupsX=[[.154,.202,.251,.299],[.417,.465,.514,.563],[.680,.728,.777,.826]];
+ // Legacy Arabic sheets: columns progress left-to-right D,C,B,A.\n const groupsX=[[.154,.202,.251,.299],[.417,.465,.514,.563],[.680,.728,.777,.826]];
  const first=.389,last=.887;
  // Option indices are A,B,C,D from RIGHT to LEFT on Arabic sheets.\n return groupsX.map(xs=>Array.from({length:20},(_,r)=>[...xs].reverse().map(x=>({x:x*w,y:(first+(last-first)*r/19)*h})))).reverse();
 }
