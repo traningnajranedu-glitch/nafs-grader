@@ -42,30 +42,18 @@ function templateGrid(image:ImageData){
  return groupsX.map(xs=>Array.from({length:20},(_,r)=>[...xs].reverse().map(x=>({x:x*w,y:(first+(last-first)*r/19)*h})))).reverse();
 }
 export function readLegacy(image:ImageData){
- // V4: Prefer the calibrated printed template over the ink-maximizing legacy
- // detector. Ink-based grid selection can lock onto filled bubbles rather than
- // their printed centers, silently changing the selected Arabic letter.
- let template:Point[][][]|null=null;
- try{template=templateGrid(image)}catch{}
- const evaluate=(grid:Point[][][])=>{
-  const readings=grid.map(rows=>rows.map((centers,r)=>readRow(image,centers,r+1)));
-  const first=readings.flatMap(g=>g.slice(0,10));
-  const confident=first.filter(r=>r.state==='clear').length;
-  return {readings,confident};
- };
- if(template){
-  const result=evaluate(template);
-  // On the official form, the fixed grid is independent of how students shade.
-  // Never optimize offsets against ink density: that biases the grid to wrong marks.
-  if(result.confident>=12)return result.readings;
- }
- // Fallback for genuinely different legacy scans; do not overwrite a valid
- // template result just because another alignment has darker pixels.
+ // Detect the actual printed bubble centers first. A template offset by even
+ // one bubble can produce plausible but consistently incorrect answers.
  try{
-  const detected=evaluate(legacyGrid(image));
-  if(detected.confident>=12)return detected.readings;
+  const grid=legacyGrid(image);
+  const readings=grid.map(rows=>rows.map((centers,r)=>readRow(image,centers,r+1)));
+  const first=readings.flatMap(group=>group.slice(0,10));
+  if(first.filter(r=>r.state==='clear').length>=12)return readings;
  }catch{}
- throw Error('تعذر التحقق من محاذاة الدوائر؛ لا يمكن اعتماد الإجابات قبل إعادة المسح أو المراجعة');
+ // A fixed-position fallback is not safe for graded results: a page can be
+ // cropped, resized, rotated or shifted while retaining the same aspect ratio.
+ // Require human review rather than silently assigning the wrong option.
+ throw Error('تعذر تحديد مراكز دوائر الإجابة المطبوعة بثقة؛ لا يمكن التصحيح آليًا لهذه الورقة. يرجى إعادة المسح بوضوح أو المراجعة اليدوية.');
 }
 export async function renderPdf(file:File,onPage:(canvas:HTMLCanvasElement,text:string,page:number,total:number)=>Promise<void>){if(file.size>50*1024*1024)throw Error('الحد الأقصى 50 ميجابايت');const pdfjs=await import('pdfjs-dist');pdfjs.GlobalWorkerOptions.workerSrc='/pdf.worker.min.mjs';const pdf=await pdfjs.getDocument({data:await file.arrayBuffer(),isEvalSupported:false}).promise;try{if(pdf.numPages>250)throw Error('الحد الأقصى 250 صفحة');for(let n=1;n<=pdf.numPages;n++){const p=await pdf.getPage(n),v=p.getViewport({scale:1500/p.getViewport({scale:1}).width});const c=document.createElement('canvas');c.width=Math.round(v.width);c.height=Math.round(v.height);await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;const t=await p.getTextContent();await onPage(c,t.items.map((x:any)=>x.str||'').join('\n'),n,pdf.numPages);c.width=0;c.height=0;p.cleanup()}}finally{await pdf.destroy()}}
 export async function decodeMeta(c:HTMLCanvasElement):Promise<SheetMeta|null>{try{const {BrowserQRCodeReader}=await import('@zxing/browser');const text=new BrowserQRCodeReader().decodeFromCanvas(c).getText();const parsed=JSON.parse(text);if(parsed.v===2&&['student','key'].includes(parsed.kind)&&['school','schoolId','name','code','gender','stage','grade'].every(k=>typeof parsed[k]==='string'&&parsed[k].length<=300)&&Array.isArray(parsed.anchors)&&parsed.anchors.length===3&&parsed.anchors.every((a:any)=>Array.isArray(a)&&a.length===3&&a.every((p:any)=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=794&&p.y>=0&&p.y<=1123)))return parsed;}catch{}return null}
