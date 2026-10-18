@@ -1,6 +1,7 @@
 import {normalize,type SheetMeta} from './auto-omr';
 type School={id:string;name:string;gender:string;stage:string};
-export function matchSchool(meta:Pick<SheetMeta,'school'|'gender'|'stage'>,schools:School[]){const matches=schools.filter(s=>normalize(s.name)===normalize(meta.school)&&(!meta.gender||s.gender===meta.gender)&&(!meta.stage||s.stage===meta.stage));return matches.length===1?matches[0]:null}
+function schoolKey(value:string){return normalize(value).replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/\bمدرسة\b/g,'').replace(/^(?:مدرسه|مدرسة)\s*/,'').replace(/\s*(?:نسخة|copy)\s*\(?\d+\)?$/i,'').replace(/\s+\d+$/,'').replace(/\s+/g,' ').trim()}
+export function matchSchool(meta:Pick<SheetMeta,'school'|'gender'|'stage'>,schools:School[]){const key=schoolKey(meta.school||'');if(!key)return null;const matches=schools.filter(s=>schoolKey(s.name)===key);if(matches.length!==1)return null;const candidate=matches[0];const gender=(v:string)=>/بنات|اناث|إناث|طالبات/.test(v)?'بنات':/بنين|ذكور|طلاب/.test(v)?'بنين':'';const stage=(v:string)=>/ابتدائ/.test(v)?'ابتدائي':/متوسط/.test(v)?'متوسط':/ثانو/.test(v)?'ثانوي':/طفولة/.test(v)?'طفولة مبكرة':'';if(meta.gender&&gender(meta.gender)&&gender(candidate.gender)&&gender(meta.gender)!==gender(candidate.gender))return null;if(meta.stage&&stage(meta.stage)&&stage(candidate.stage)&&stage(meta.stage)!==stage(candidate.stage))return null;return candidate}
 export async function oldIdentity(canvas:HTMLCanvasElement,text:string,schools:School[],ocr:any){
  let code='';
  try{const {BrowserMultiFormatReader}=await import('@zxing/browser');code=new BrowserMultiFormatReader().decodeFromCanvas(canvas).getText();if(!/^[A-Za-z0-9-]{1,40}$/.test(code))code=''}catch{}
