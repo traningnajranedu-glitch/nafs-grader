@@ -42,7 +42,8 @@ function templateGrid(image:ImageData){
 export function readLegacy(image:ImageData){
  let detected:Point[][][]|null=null;
  try{detected=legacyGrid(image)}catch{}
- const base=templateGrid(image);
+ let base:Point[][][]|null=null;
+ try{base=templateGrid(image)}catch{if(!detected)throw Error('أبعاد الورقة لا تطابق النموذج المعتمد')}
  const evaluate=(grid:Point[][][])=>{
   const readings=grid.map(rows=>rows.map((centers,r)=>readRow(image,centers,r+1)));
   const first=readings.flatMap(g=>g.slice(0,10));
@@ -53,6 +54,7 @@ export function readLegacy(image:ImageData){
  let best=detected?evaluate(detected):null;
  const shift=[-.006,-.003,0,.003,.006];
  for(const dx of shift)for(const dy of shift){
+  if(!base)continue;
   const grid=base.map(rows=>rows.map(centers=>centers.map(p=>({x:p.x+dx*image.width,y:p.y+dy*image.height}))));
   const result=evaluate(grid);
   if(!best||result.quality>best.quality)best=result;
