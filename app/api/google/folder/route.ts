@@ -1,6 +1,16 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {requireAdmin,driveToken} from '../../../../lib/google-drive-server';
 export const runtime='nodejs';
-const folderName='ملفات المدارس للتصحيح';
-async function findFolder(token:string){const q="name = '"+folderName+"' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";const url='https://www.googleapis.com/drive/v3/files?fields=files(id,name),nextPageToken&page_size=100&q='+encodeURIComponent(q);const response=await fetch(url,{headers:{Authorization:'Bearer '+token},cache:'no-store'});if(!response.ok)throw Error('تعذر البحث عن مجلدات التطبيق في Google Drive');const data=await response.json();return (data.files||[]).find((x:{id:string;name:string})=>x.name===folderName) as {id:string;name:string}|undefined}
-export async function POST(req:NextRequest){try{await requireAdmin(req.headers.get('authorization'));const token=await driveToken();let folder=await findFolder(token);if(!folder){const response=await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:folderName,mimeType:'application/vnd.google-apps.folder'}),cache:'no-store'});const data=await response.json();if(!response.ok||!data.id)throw Error(data.error?.message||'تعذر إنشاء مجلد الاستقبال');folder={id:data.id,name:data.name}}return NextResponse.json({success:true,folderId:folder.id,url:'https://drive.google.com/drive/folders/'+encodeURIComponent(folder.id)})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'تعذر إنشاء المجلد'},{status:403})}}
+// Scan, download and this link must always use the same configured folder.
+export async function POST(req:NextRequest){
+ try{
+  await requireAdmin(req.headers.get('authorization'));
+  const id=process.env.GOOGLE_DRIVE_INPUT_FOLDER_ID;
+  if(!id)throw Error('لم يتم ضبط مجلد استقبال ملفات PDF');
+  const token=await driveToken();
+  const response=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'?fields=id,name,mimeType,trashed',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  const folder=await response.json();
+  if(!response.ok||folder.trashed||folder.mimeType!=='application/vnd.google-apps.folder')throw Error('تعذر الوصول إلى مجلد الاستقبال المعتمد؛ تحقق من ربط حساب Google وصلاحية المجلد');
+  return NextResponse.json({success:true,folderId:id,name:folder.name,url:'https://drive.google.com/drive/folders/'+encodeURIComponent(id)});
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'تعذر فتح المجلد'},{status:403})}
+}
