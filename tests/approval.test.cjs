@@ -1,0 +1,10 @@
+const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict');
+const m={exports:{}};new Function('exports','module',ts.transpileModule(fs.readFileSync('lib/approval.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(m.exports,m);
+const {gradeBand,answerCoverage}=m.exports;
+assert.equal(gradeBand('ابتدائي','3'),'primary-3');assert.equal(gradeBand('متوسط','٣'),'middle-3');assert.equal(gradeBand('ابتدائي','٦'),'primary-6');assert.equal(gradeBand('ابتدائي',''),null);assert.equal(gradeBand('','3'),null);
+const clear={questionNumber:1,selected:'A',state:'clear',ratios:[.8,0,0,0]};
+assert.equal(answerCoverage([1],[clear],{}),'');
+for(const state of ['blank','multiple','uncertain'])assert.ok(answerCoverage([1],[{...clear,state}],{}));
+assert.equal(answerCoverage([1],[{...clear,state:'blank',selected:null}],{1:''}),'');
+assert.ok(answerCoverage([1,2],[clear],{}));assert.ok(answerCoverage([1],[clear,clear],{}));assert.ok(answerCoverage([1],[clear],{1:'Z'}));
+console.log('PASS: grade and stage matching, complete answers, mandatory ambiguity and blank review');
