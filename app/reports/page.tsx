@@ -13,7 +13,7 @@ const tiles=[{key:'schools',label:'المدارس',icon:'🏫',color:'#8751da',b
 export default function SchoolReports(){
  const [allowed,setAllowed]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [rows,setRows]=useState<Correction[]>([]),[schools,setSchools]=useState<School[]>([]);
- const [gender,setGender]=useState('all'),[grade,setGrade]=useState('primary6'),[query,setQuery]=useState('');
+ const [gender,setGender]=useState('all'),[grade,setGrade]=useState('all'),[query,setQuery]=useState('');
  const [updated,setUpdated]=useState('');
  const load=useCallback(async()=>{if(!supabase)return;setBusy(true);try{
  const schoolResult=await supabase.from('schools').select('name,gender,stage');if(schoolResult.error)throw schoolResult.error;
@@ -32,8 +32,8 @@ export default function SchoolReports(){
  const isSixth=grade==='primary6';
  const summary=useMemo(()=>{const m=new Map<string,{name:string;pages:number;complete:number;review:number;identity:number;shading:number}>();for(const r of live){const name=r.school_name||'غير محددة';const key=norm(name);const x=m.get(key)||{name,pages:0,complete:0,review:0,identity:0,shading:0};x.pages++;if(r.verified_at)x.complete++;else x.review++;m.set(key,x)}return [...m.values()].sort((a,b)=>b.pages-a.pages)},[live]);
  const totals=useMemo(()=>summary.reduce((a,s)=>({schools:a.schools+1,pages:a.pages+s.pages,complete:a.complete+s.complete,review:a.review+s.review,identity:0,shading:0}),{schools:0,pages:0,complete:0,review:0,identity:0,shading:0}),[summary]);
- const verifiedSchools=useMemo(()=>schoolSummary.filter(([name])=>(gender==='all'||classify(name,matchSchool(name))===gender)&&norm(name).includes(norm(query))).map(([name,pages,complete,review,identity,shading])=>({name,pages,complete,review,identity,shading})),[gender,query,matchSchool]);
- const usingSnapshot=grade==='primary6';
+ const verifiedSchools=useMemo(()=>schoolSummary.filter(([name])=>(grade==='all'||(grade==='primary6'&&norm(name)!==norm('السابعة للطفولة المبكرة')))&&(gender==='all'||classify(name,matchSchool(name))===gender)&&norm(name).includes(norm(query))).map(([name,pages,complete,review,identity,shading])=>({name,pages,complete,review,identity,shading})),[gender,query,matchSchool,grade]);
+ const usingSnapshot=grade==='all'||grade==='primary6';
  const visibleSchools=usingSnapshot?verifiedSchools:summary;
  const display=usingSnapshot?verifiedSchools.reduce((a,s)=>({schools:a.schools+1,pages:a.pages+s.pages,complete:a.complete+s.complete,review:a.review+s.review,identity:a.identity+s.identity,shading:a.shading+s.shading}),{schools:0,pages:0,complete:0,review:0,identity:0,shading:0}):totals;
  const processed=display.pages?100*display.complete/display.pages:0;
@@ -46,12 +46,12 @@ export default function SchoolReports(){
  <div><a href="/workspace" style={{color:'#087e83',fontSize:13}}>← لوحة مدير النظام</a><h1 style={{fontSize:'clamp(24px,3vw,38px)',margin:'9px 0 3px'}}>📊 إحصائيات وتقارير أولية</h1><div>المصحح الآلي لاختبارات نافس | إدارة التعليم بمنطقة نجران</div></div>
  <div style={{fontSize:13,color:'#42677a'}}>آخر تحديث من النظام: {updated||'—'}<div style={{marginTop:10,display:'flex',gap:8}}><button onClick={()=>void load()} disabled={!allowed||busy} style={selectStyle}>{busy?'جارٍ التحديث':'↻ تحديث البيانات'}</button><button onClick={()=>window.print()} style={selectStyle}>طباعة / PDF</button></div></div></header>
  {loading?<p>جارٍ التحقق من صلاحيات مدير النظام...</p>:error&&!allowed?<p role="alert">{error}</p>:allowed?<><section style={{...panel,marginBottom:16,display:'flex',gap:12,flexWrap:'wrap',alignItems:'center'}}>
- <label>المرحلة والصف <select aria-label="المرحلة والصف" value={grade} onChange={e=>setGrade(e.target.value)} style={selectStyle}><option value="primary6">السادس الابتدائي</option><option value="primary3">الثالث الابتدائي</option><option value="middle3">الثالث المتوسط</option></select></label>
+ <label>المرحلة والصف <select aria-label="المرحلة والصف" value={grade} onChange={e=>setGrade(e.target.value)} style={selectStyle}><option value="all">جميع المراحل (ملخص النتائج)</option><option value="primary6">السادس الابتدائي (المؤكد/المصنف)</option><option value="primary3">الثالث الابتدائي</option><option value="middle3">الثالث المتوسط</option></select></label>
  <label>الجنس <select aria-label="الجنس" value={gender} onChange={e=>setGender(e.target.value)} style={selectStyle}><option value="all">بنين وبنات</option><option value="boys">بنين</option><option value="girls">بنات</option></select></label>
  <input aria-label="البحث عن مدرسة" value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث باسم المدرسة..." style={selectStyle}/><button onClick={exportExcel} style={{...selectStyle,background:'#087e83',color:'white'}}>تصدير Excel</button>
  </section>
  {error&&<p role="alert" style={{color:'#b91c1c'}}>تعذر تحديث بيانات النظام: {error}. لا يتم عرض أرقام قديمة عند تعذر الاتصال.</p>}
- <p style={{fontSize:13,color:'#547080'}}>{usingSnapshot?'المصدر: ملخص نتائج Excel المؤرخ 21 أكتوبر 2026، 12:29 السعودية. هذه أرقام إجمالية موثقة وليست مزامنة مباشرة.':'المصدر: سجلات Supabase المتاحة فقط. بيانات هذه الفلاتر غير مكتملة ولا تمثل ملفات Google Drive.'}</p>
+ <p style={{fontSize:13,color:'#547080'}}>{usingSnapshot?'المصدر: ملخص Excel بتاريخ 21 أكتوبر 2026، 20:06 السعودية. البيانات لقطة مؤرخة وليست مزامنة مباشرة. تم استبعاد المدرسة ذات النموذج غير المؤكد من فلتر السادس فقط؛ تصنيف بقية المدارس يعتمد على التصنيف السابق ويحتاج تدقيقًا نهائيًا.':'المصدر: سجلات Supabase المتاحة فقط. بيانات هذه الفلاتر غير مكتملة ولا تمثل ملفات Google Drive.'}</p>
  <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(175px,1fr))',gap:12,marginBottom:16}}>{tiles.map(t=><article key={t.key} style={{...panel,background:t.bg,borderColor:t.bg,position:'relative',overflow:'hidden',minHeight:120}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',color:t.color,fontWeight:800}}><span>{t.label}</span><span style={{fontSize:25}}>{t.icon}</span></div><strong style={{fontSize:32,color:'#173c52',display:'block',marginTop:15}}>{display[t.key].toLocaleString('en-US')}</strong><div style={{height:4,borderRadius:8,background:t.color,position:'absolute',bottom:0,right:0,left:0}}/></article>)}</section>
  {display.pages===0?<section style={{...panel,textAlign:'center',padding:55,marginBottom:16}}><div style={{fontSize:42}}>⏳</div><h2>النتائج قيد المعالجة</h2><p>لم تتوفر أوراق أو نتائج لهذا الصف في بيانات المصحح الحالية. لن تُنسب إليه نتائج الصف السادس.</p></section>:<>
  <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(270px,1fr))',gap:15,marginBottom:16}}>
