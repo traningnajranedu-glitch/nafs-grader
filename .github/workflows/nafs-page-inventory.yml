@@ -38,7 +38,7 @@ jobs:
           def files_in(folder):
               token=None
               while True:
-                  res=drive.files().list(q="'%s' in parents and trashed = false and mimeType = 'application/pdf'"%folder,fields='nextPageToken,files(id,name,mimeType)',page_size=1000,pageToken=token).execute()
+                  res=drive.files().list(q="'%s' in parents and trashed = false and mimeType = 'application/pdf'"%folder,fields='nextPageToken,files(id,name,mimeType)',pageSize=1000,pageToken=token).execute()
                   yield from res.get('files',[])
                   token=res.get('nextPageToken')
                   if not token:break
@@ -82,7 +82,7 @@ jobs:
                   letter=get_column_letter(col[0].column)
                   ws.column_dimensions[letter].width=min(55,max(16,max(len(str(c.value or '')) for c in col)+3))
           output=io.BytesIO();wb.save(output);output.seek(0)
-          matches=drive.files().list(q="'%s' in parents and name = '%s' and trashed = false"%(target,report_name),fields='files(id)',page_size=10).execute().get('files',[])
+          matches=drive.files().list(q="'%s' in parents and name = '%s' and trashed = false"%(target,report_name),fields='files(id)',pageSize=10).execute().get('files',[])
           media=MediaIoBaseUpload(output,mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',resumable=True)
           if matches:
               uploaded=drive.files().update(fileId=matches[0]['id'],media_body=media,fields='id,webViewLink').execute()
