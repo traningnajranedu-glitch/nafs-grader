@@ -82,13 +82,28 @@ jobs:
                   letter=get_column_letter(col[0].column)
                   ws.column_dimensions[letter].width=min(55,max(16,max(len(str(c.value or '')) for c in col)+3))
           output=io.BytesIO();wb.save(output);output.seek(0)
-          matches=drive.files().list(q="'%s' in parents and name = '%s' and trashed = false"%(target,report_name),fields='files(id)',pageSize=10).execute().get('files',[])
-          media=MediaIoBaseUpload(output,mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',resumable=True)
-          if matches:
-              uploaded=drive.files().update(fileId=matches[0]['id'],media_body=media,fields='id,webViewLink').execute()
-          else:
-              uploaded=drive.files().create(body={'name':report_name,'parents':[target]},media_body=media,fields='id,webViewLink').execute()
-          print('Scanned files:',sum(counts.values()),'errors:',len(errors),'answer sheets:',sum(totals.values()))
-          print('Report:',uploaded.get('webViewLink','https://drive.google.com/file/d/'+uploaded['id']+'/view'))
+          os.makedirs('reports',exist_ok=True)
+          with open(os.path.join('reports',report_name),'wb') as report_file:
+              report_file.write(output.getvalue())
+          print('Saved report as GitHub Actions artifact; scanned:',sum(counts.values()),'PDFs; pages:',sum(totals.values()),'errors:',len(errors),flush=True)
+          try:
+                  matches=drive.files().list(q="'%s' in parents and name = '%s' and trashed = false"%(target,report_name),fields='files(id)',pageSize=10).execute().get('files',[])
+              media=MediaIoBaseUpload(output,mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',resumable=True)
+              if matches:
+                  uploaded=drive.files().update(fileId=matches[0]['id'],media_body=media,fields='id,webViewLink').execute()
+              else:
+                  uploaded=drive.files().create(body={'name':report_name,'parents':[target]},media_body=media,fields='id,webViewLink').execute()
+              print('Scanned files:',sum(counts.values()),'errors:',len(errors),'answer sheets:',sum(totals.values()))
+              print('Report:',uploaded.get('webViewLink','https://drive.google.com/file/d/'+uploaded['id']+'/view'))
+          except Exception as upload_error:
+              print('Google Drive upload unavailable; workbook remains available in Actions artifacts:',str(upload_error)[:500],flush=True)
           if errors:sys.exit('Some PDFs failed; see error sheet in uploaded workbook')
           PY
+      - name: Upload Excel report as GitHub Actions artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nafs-page-inventory-excel
+          path: reports/*.xlsx
+          if-no-files-found: warn
+          retention-days: 30
