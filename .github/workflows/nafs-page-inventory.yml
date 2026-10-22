@@ -1,0 +1,94 @@
+name: NAFS PDF page inventory
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Install PDF and Drive tools
+        run: python -m pip install --quiet google-api-python-client google-auth pypdf openpyxl
+      - name: Count pages and publish workbook
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python - <<'PY'
+          import io,json,os,re,sys
+          from collections import defaultdict
+          from google.oauth2.service_account import Credentials
+          from googleapiclient.discovery import build
+          from googleapiclient.http import MediaIoBaseDownload,MediaIoBaseUpload
+          from pypdf import PdfReader
+          from openpyxl import Workbook
+          from openpyxl.styles import Font,PatternFill
+          from openpyxl.utils import get_column_letter
+
+          raw=os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON','')
+          if not raw:
+              sys.exit('Missing NAFS_GOOGLE_SERVICE_ACCOUNT_JSON GitHub Actions secret')
+          creds=Credentials.from_service_account_info(json.loads(raw),scopes=['https://www.googleapis.com/auth/drive'])
+          drive=build('drive','v3',credentials=creds,cache_discovery=False)
+          sources=[('ثالث ابتدائي','1cotd9Fm4nvLR9RBqwHSVou6gqgNNcaiC'),('ثالث متوسط','1vMChKpteUA9injYnPcMifpLtCvpIVtjL')]
+          target='1foYgnj5csR6hrrRAkI8on6iZkXv3YMe6'
+          report_name='حصر_أوراق_نافس_311_ملف.xlsx'
+          def files_in(folder):
+              token=None
+              while True:
+                  res=drive.files().list(q="'%s' in parents and trashed = false and mimeType = 'application/pdf'"%folder,fields='nextPageToken,files(id,name,mimeType)',page_size=1000,pageToken=token).execute()
+                  yield from res.get('files',[])
+                  token=res.get('nextPageToken')
+                  if not token:break
+          def gender(name):
+              n=name.replace('أ','ا').replace('إ','ا')
+              if re.search(r'بنات|البنات|للبنات|\bبنت\b|\bام\b',n):return 'بنات'
+              if re.search(r'بنين|البنين|للبنين',n):return 'بنين'
+              return 'غير معروفة'
+          wb=Workbook();summary=wb.active;summary.title='الملخص'
+          details=wb.create_sheet('تفاصيل الملفات')
+          details.append(['المرحلة','المدرسة / اسم الملف','الجنس','عدد أوراق الإجابة','الحالة','معرف الملف'])
+          totals=defaultdict(int);counts=defaultdict(int);errors=[]
+          for stage,folder in sources:
+              for item in files_in(folder):
+                  name=item['name'];g=gender(name);page_count=0;status='مكتمل'
+                  try:
+                      request=drive.files().get_media(fileId=item['id'])
+                      stream=io.BytesIO();dl=MediaIoBaseDownload(stream,request)
+                      finished=False
+                      while not finished: _,finished=dl.next_chunk()
+                      stream.seek(0);page_count=len(PdfReader(stream,strict=False).pages)
+                  except Exception as e:
+                      status='تعذر الفحص';errors.append((name,str(e)[:200]))
+                  details.append([stage,name,g,page_count,status,item['id']])
+                  if status=='مكتمل':
+                      totals[(stage,g)]+=page_count
+                      counts[(stage,g)]+=1
+          summary.append(['المرحلة','أوراق بنين','أوراق بنات','أوراق غير معروفة الجنس','الإجمالي','الملفات المفحوصة'])
+          for stage in ['ثالث ابتدائي','ثالث متوسط','غير معروفة']:
+              vals=[totals[(stage,g)] for g in ['بنين','بنات','غير معروفة']]
+              summary.append([stage,*vals,sum(vals),sum(counts[(stage,g)] for g in ['بنين','بنات','غير معروفة'])])
+          summary.append(['الإجمالي',*[sum(totals[(s,g)] for s in ['ثالث ابتدائي','ثالث متوسط','غير معروفة']) for g in ['بنين','بنات','غير معروفة']],sum(totals.values()),sum(counts.values())])
+          if errors:
+              ws=wb.create_sheet('أخطاء الفحص');ws.append(['الملف','السبب'])
+              for row in errors:ws.append(list(row))
+          for ws in wb:
+              ws.freeze_panes='A2';ws.auto_filter.ref=ws.dimensions
+              for cell in ws[1]:
+                  cell.font=Font(bold=True,color='FFFFFF');cell.fill=PatternFill('solid',fgColor='174A5C')
+              for col in ws.columns:
+                  letter=get_column_letter(col[0].column)
+                  ws.column_dimensions[letter].width=min(55,max(16,max(len(str(c.value or '')) for c in col)+3))
+          output=io.BytesIO();wb.save(output);output.seek(0)
+          matches=drive.files().list(q="'%s' in parents and name = '%s' and trashed = false"%(target,report_name),fields='files(id)',page_size=10).execute().get('files',[])
+          media=MediaIoBaseUpload(output,mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',resumable=True)
+          if matches:
+              uploaded=drive.files().update(fileId=matches[0]['id'],media_body=media,fields='id,webViewLink').execute()
+          else:
+              uploaded=drive.files().create(body={'name':report_name,'parents':[target]},media_body=media,fields='id,webViewLink').execute()
+          print('Scanned files:',sum(counts.values()),'errors:',len(errors),'answer sheets:',sum(totals.values()))
+          print('Report:',uploaded.get('webViewLink','https://drive.google.com/file/d/'+uploaded['id']+'/view'))
+          if errors:sys.exit('Some PDFs failed; see error sheet in uploaded workbook')
+          PY
