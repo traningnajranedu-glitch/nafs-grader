@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "postinstall": "node scripts/copy-pdf-worker.cjs",
-    "test": "node tests/omr.test.cjs && node tests/batch.test.cjs && node tests/subjects.test.cjs && node tests/approval.test.cjs && node tests/drive-folder.test.cjs",
+    "test": "node tests/omr.test.cjs && node tests/batch.test.cjs && node tests/subjects.test.cjs && node tests/approval.test.cjs && node tests/drive-folder.test.cjs && node tests/adaptive-grid.test.cjs",
     "test:support": "node tests/support-edge.test.cjs"
   },
   "dependencies": {
