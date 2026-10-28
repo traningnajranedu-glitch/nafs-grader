@@ -48,7 +48,10 @@ export async function POST(req:NextRequest){
   const warnings:string[]=[];
   if(indices.civil<0)warnings.push('عمود السجل المدني غير موجود');
   if(indices.total<0)warnings.push('عمود الدرجة الكلية غير موجود');
-  const school=meta.name.replace(/^نتائج[-\s]*/,'').replace(/\.xlsx$/i,'').trim();
+  const schoolIndex=indices.school;
+  const schoolValues=[...new Set(matrix.slice(headerIdx+1).map(row=>schoolIndex>=0?String(row[schoolIndex]??'').trim():'').filter(Boolean))];
+  if(schoolValues.length!==1)throw Error('لا يمكن تحديد مدرسة واحدة من محتوى Excel. لا يُستخدم اسم الملف للتخمين. عدد المدارس المكتشفة: '+schoolValues.length);
+  const school=schoolValues[0];
   const rows=matrix.slice(headerIdx+1).map((row,i)=>{
    const get=(k:string)=>indices[k]<0?'':String(row[indices[k]]??'').trim();
    const score=get('score'),total=get('total'),validScore=score!==''&&Number.isFinite(Number(score)),validTotal=total!==''&&Number.isFinite(Number(total));
