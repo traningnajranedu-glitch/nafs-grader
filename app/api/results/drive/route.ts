@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {driveToken,requireAdmin} from '../../../../lib/google-drive-server';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-const FOLDERS=[{stage:'primary3',id:'16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR'},{stage:'middle3',id:'1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn'}] as const;
+const FOLDERS=[{stage:'primary3',id:'16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR'},{stage:'middle3',id:'1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn'},{stage:'primary6',id:'1foYgnj5csR6hrrRAkI8on6iZkXv3YMe6'}] as const;
 type DriveFile={id:string;name:string;mimeType:string;modifiedTime?:string;webViewLink?:string;size?:string};
 export async function GET(req:NextRequest){
  try{
