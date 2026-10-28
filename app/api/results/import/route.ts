@@ -50,8 +50,12 @@ export async function POST(req:NextRequest){
   if(indices.total<0)warnings.push('عمود الدرجة الكلية غير موجود');
   const schoolIndex=indices.school;
   const schoolValues=[...new Set(matrix.slice(headerIdx+1).map(row=>schoolIndex>=0?String(row[schoolIndex]??'').trim():'').filter(Boolean))];
-  if(schoolValues.length!==1)throw Error('لا يمكن تحديد مدرسة واحدة من محتوى Excel. لا يُستخدم اسم الملف للتخمين. عدد المدارس المكتشفة: '+schoolValues.length);
-  const school=schoolValues[0];
+  if(schoolValues.length>1)throw Error('الملف يحتوي على أكثر من مدرسة؛ يتطلب مراجعة قبل الاستيراد');
+  // Many official result workbooks omit a school column. Keep the source filename as a provisional label, never as a verified school identity.
+  const filenameLabel=String(meta.name).replace(/\\.xlsx$/i,'').replace(/^نتائج[-_\\s]*/,'').trim();
+  const school=schoolValues[0]||filenameLabel;
+  if(!school)throw Error('تعذر تحديد تسمية المدرسة من الملف');
+  if(!schoolValues.length)warnings.push('اسم المدرسة مستنتج مبدئيًا من اسم ملف المصدر، ويحتاج مطابقة قبل الاعتماد');
   const rows=matrix.slice(headerIdx+1).map((row,i)=>{
    const get=(k:string)=>indices[k]<0?'':String(row[indices[k]]??'').trim();
    const score=get('score'),total=get('total'),validScore=score!==''&&Number.isFinite(Number(score)),validTotal=total!==''&&Number.isFinite(Number(total));
