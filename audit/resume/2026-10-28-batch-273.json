@@ -11,7 +11,7 @@
   "reviewed_this_run": [
     {
       "source_id": "1AUmLhEYizzep2YxrwoH4-fsKXJN6TLL_",
-      "pdf_sha256": "",
+      "pdf_sha256": "e7821e084f92d63069cee12e6d69cfea36746d2747f59557d33287348d852628",
       "pages": 5,
       "pending_rechecked": 0,
       "newly_approved": 0,
@@ -19,7 +19,7 @@
     },
     {
       "source_id": "1nxUIhoXBz8dnZ5vBi6wMmy7HFHBvIUP_",
-      "pdf_sha256": "",
+      "pdf_sha256": "343569aac1a171eb7d1a17482b2c02ba7676c8d2d0018db1b16080f990af1cc8",
       "pages": 16,
       "pending_rechecked": 4,
       "newly_approved": 0,
