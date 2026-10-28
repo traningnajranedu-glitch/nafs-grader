@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-28",
+  "source_checkpoint_library_file_id": "libfile_f92fcd55258c81918ce43c7a7d57156d",
+  "source_checkpoint_version": 3,
+  "local_checkpoint_sha256": "3bc4b9d0c87e0a157a0c9691dfe89c4709b7b6228e19ebc202811ff798b2207c",
+  "status": "in_progress",
+  "reviewed_files_total": 273,
+  "remaining_files_in_round": 38,
+  "papers_total": 18097,
+  "schools_total": 311,
+  "reviewed_this_run": [
+    {
+      "source_id": "1AUmLhEYizzep2YxrwoH4-fsKXJN6TLL_",
+      "pdf_sha256": "",
+      "pages": 5,
+      "pending_rechecked": 0,
+      "newly_approved": 0,
+      "changed_pages": 0
+    },
+    {
+      "source_id": "1nxUIhoXBz8dnZ5vBi6wMmy7HFHBvIUP_",
+      "pdf_sha256": "",
+      "pages": 16,
+      "pending_rechecked": 4,
+      "newly_approved": 0,
+      "changed_pages": 0
+    }
+  ],
+  "previous_drive_exports_verified": 4,
+  "drive_writes_this_run": 0,
+  "identity_decisions_preserved": 6,
+  "checkpoint_upload_status": "blocked: library container_session_unavailable",
+  "notes": "No source grading values changed. Resume from library version 3 and use this manifest to skip these two verified no-change schools. The local version 4 checkpoint was prepared but could not be uploaded."
+}
