@@ -1,0 +1,23 @@
+name: NAFS source matching preflight
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: pip install google-api-python-client google-auth pypdf
+      - name: Verify PDF sources without modifying approved results
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python scripts/nafs-preflight.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nafs-source-preflight
+          path: reports/nafs-preflight.json
