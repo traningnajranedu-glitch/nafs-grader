@@ -7,9 +7,14 @@ const norm=(s:unknown)=>String(s??'').trim().replace(/\s+/g,' ').replace(/[أإ�
 const aliases={
  name:['اسم الطالب','الطالب','student name','student_name'],
  civil:['السجل المدني','رقم الهوية','رقم الطالب','student_code','civil id'],
- score:['الدرجة','درجة الطالب','score'],
- total:['الدرجة الكلية','الدرجة العظمى','total','max score'],
- gender:['الجنس','gender'],
+ score:['المجموع','الدرجة','درجة الطالب','score'],
+ total:['الدرجة القصوى','الدرجة الكلية','الدرجة العظمى','total','max score'],
+ gender:['جنس المدرسة','الجنس','gender'],
+ status:['الحالة','status'],
+ reason:['سبب المراجعة','review reason'],
+ subjectArabic:['لغتي من 10','لغتي'],
+ subjectMath:['الرياضيات من 10','الرياضيات'],
+ subjectScience:['العلوم من 10','العلوم'],
 };
 function col(headers:string[],opts:string[]){return headers.findIndex(h=>opts.some(o=>norm(h)===norm(o)))}
 export async function POST(req:NextRequest){
@@ -46,9 +51,11 @@ export async function POST(req:NextRequest){
   const rows=matrix.slice(headerIdx+1).map((row,i)=>{
    const get=(k:string)=>indices[k]<0?'':String(row[indices[k]]??'').trim();
    const score=get('score'),total=get('total'),validScore=score!==''&&Number.isFinite(Number(score)),validTotal=total!==''&&Number.isFinite(Number(total));
-   const rowWarnings=(!get('name')||!validScore||!validTotal||Number(score)<0||Number(total)<=0||Number(score)>Number(total));
+   const rowWarnings=(!get('name')||!validScore||!validTotal||Number(score)<0||Number(total)<=0||Number(score)>Number(total)||/تحتاج مراجعة/.test(get('status')));
+   if(get('reason'))warnings.push('صف '+(headerIdx+i+2)+': '+get('reason'));
+   const answers={subjects:{arabic:get('subjectArabic')||null,math:get('subjectMath')||null,science:get('subjectScience')||null},sourceStatus:get('status'),reviewReason:get('reason')};
    if(rowWarnings)warnings.push('صف '+(headerIdx+i+2)+' يحتاج تحقق');
-   return {row_number:headerIdx+i+2,student_name:get('name')||null,civil_id:get('civil')||null,school_name:school,stage,gender:get('gender')||null,score:validScore?Number(score):null,total:validTotal?Number(total):null,answers:null,status:'pending_review'};
+   return {row_number:headerIdx+i+2,student_name:get('name')||null,civil_id:get('civil')||null,school_name:school,stage,gender:get('gender')||null,score:validScore?Number(score):null,total:validTotal?Number(total):null,answers,status:'pending_review'};
   }).filter(r=>r.student_name||r.civil_id||r.score!==null);
   if(rows.length>5000)throw Error('عدد الصفوف يتجاوز الحد الآمن');
   const imported=await db.from('nafs_result_imports').insert({drive_file_id:fileId,stage,school_name:school,modified_time:meta.modifiedTime,row_count:rows.length,warnings:[...new Set(warnings)].slice(0,200),status:'pending_review'}).select('id').single();
