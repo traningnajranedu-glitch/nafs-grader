@@ -10,6 +10,10 @@ export async function GET(req:NextRequest){
   const token=await driveToken();
   const stages=await Promise.all(FOLDERS.map(async folder=>{
    const files:DriveFile[]=[];let pageToken:string|undefined;
+   const folderResponse=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(folder.id)+'?fields=id,name,mimeType,trashed,capabilities(canListChildren),owners(emailAddress)&supportsAllDrives=true',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+   const folderInfo=await folderResponse.json().catch(()=>({}));
+   if(!folderResponse.ok)throw Error('فشل الوصول لمجلد '+folder.stage+' (HTTP '+folderResponse.status+'): '+String(folderInfo.error?.message||'صلاحية الوصول غير متاحة'));
+   if(folderInfo.mimeType!=='application/vnd.google-apps.folder')throw Error('المعرف المحدد للمرحلة '+folder.stage+' لا يشير إلى مجلد Google Drive');
    do{
     const params=new URLSearchParams({q:"'"+folder.id+"' in parents and trashed = false",fields:'nextPageToken,files(id,name,mimeType,modifiedTime,webViewLink,size)',pageSize:'100',supportsAllDrives:'true',includeItemsFromAllDrives:'true'});
     if(pageToken)params.set('pageToken',pageToken);
@@ -18,7 +22,7 @@ export async function GET(req:NextRequest){
     const body=await response.json();files.push(...(body.files||[]));pageToken=body.nextPageToken;
    }while(pageToken&&files.length<1000);
    const excel=files.filter(f=>(/\.xlsx?$/i.test(f.name)||f.mimeType==='application/vnd.google-apps.spreadsheet')&&(folder.stage!=='primary6'||(!/ملخص|تقرير|احصائ|إحصائ|مؤشر|قالب|نموذج|جديدين/i.test(f.name))));
-   return {stage:folder.stage,folderItems:files.length,sampleTypes:[...new Set(files.map(f=>f.mimeType))].slice(0,5),emptyReason:files.length===0?'لم يُرجع Google Drive أي عناصر. تحقق من الحساب وصلاحيات المجلد.':excel.length===0?'عناصر موجودة ولكن لا توجد ملفات نتائج Excel مطابقة.':null,folderUrl:'https://drive.google.com/drive/folders/'+folder.id,count:excel.length,lastModified:excel.map(f=>f.modifiedTime||'').sort().at(-1)||null,files:excel.map(f=>({id:f.id,name:f.name,modifiedTime:f.modifiedTime||null,url:f.webViewLink||'https://drive.google.com/file/d/'+f.id+'/view'}))};
+   return {stage:folder.stage,folderItems:files.length,folderAccessible:true,folderName:folderInfo.name||null,sampleTypes:[...new Set(files.map(f=>f.mimeType))].slice(0,5),emptyReason:files.length===0?'المجلد متاح للاتصال الحالي ولكن واجهة Google Drive أعادت صفر عنصر؛ تحقق من هوية الحساب المرتبط أو بنية المجلد.':excel.length===0?'عناصر موجودة ولكن لا توجد ملفات نتائج Excel مطابقة.':null,folderUrl:'https://drive.google.com/drive/folders/'+folder.id,count:excel.length,lastModified:excel.map(f=>f.modifiedTime||'').sort().at(-1)||null,files:excel.map(f=>({id:f.id,name:f.name,modifiedTime:f.modifiedTime||null,url:f.webViewLink||'https://drive.google.com/file/d/'+f.id+'/view'}))};
   }));
   return NextResponse.json({stages,checkedAt:new Date().toISOString(),source:'Google Drive file metadata; not verified sheet scores'},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'تعذر مزامنة قائمة النتائج'},{status:403})}
