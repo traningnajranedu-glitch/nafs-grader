@@ -61,7 +61,7 @@ export async function POST(req:NextRequest){
    const score=get('score'),total=get('total'),validScore=score!==''&&Number.isFinite(Number(score)),validTotal=total!==''&&Number.isFinite(Number(total));
    const rowWarnings=(!get('name')||!validScore||!validTotal||Number(score)<0||Number(total)<=0||Number(score)>Number(total)||/تحتاج مراجعة/.test(get('status')));
    if(get('reason'))warnings.push('صف '+(headerIdx+i+2)+': '+get('reason'));
-   const answers={subjects:{arabic:get('subjectArabic')||null,math:get('subjectMath')||null,science:get('subjectScience')||null},sourceStatus:get('status'),reviewReason:get('reason')};
+   const answers={schemaVersion:2,sourceFileId:fileId,sourceRow:headerIdx+i+2,subjects:{arabic:get('subjectArabic')||null,math:get('subjectMath')||null,science:get('subjectScience')||null},sourceStatus:get('status'),reviewReason:get('reason')};
    if(rowWarnings)warnings.push('صف '+(headerIdx+i+2)+' يحتاج تحقق');
    return {row_number:headerIdx+i+2,student_name:get('name')||null,civil_id:get('civil')||null,school_name:school,stage,gender:get('gender')||null,score:validScore?Number(score):null,total:validTotal?Number(total):null,answers,status:'pending_review'};
   }).filter(r=>r.student_name||r.civil_id||r.score!==null);
