@@ -2,9 +2,10 @@ import {NextRequest,NextResponse} from 'next/server';
 import * as XLSX from 'xlsx';
 import {driveToken,requireAdmin,serviceDb} from '../../../../lib/google-drive-server';
 export const runtime='nodejs';export const dynamic='force-dynamic';
-const folders:Record<string,string>={primary3:'16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR',middle3:'1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn'};
+const folders:Record<string,string>={primary3:'16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR',middle3:'1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn',primary6:'1foYgnj5csR6hrrRAkI8on6iZkXv3YMe6'};
 const norm=(s:unknown)=>String(s??'').trim().replace(/\s+/g,' ').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').toLowerCase();
 const aliases={
+ school:['المدرسة','اسم المدرسة','school','school_name'],
  name:['اسم الطالب','الطالب','student name','student_name'],
  civil:['السجل المدني','رقم الهوية','رقم الطالب','student_code','civil id'],
  score:['المجموع','الدرجة','درجة الطالب','score'],
