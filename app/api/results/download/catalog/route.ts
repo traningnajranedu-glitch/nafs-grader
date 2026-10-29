@@ -20,6 +20,6 @@ export async function GET(req:NextRequest){
   ws['!autofilter']={ref:'A1:F'+(rows.length+1)};
   XLSX.utils.book_append_sheet(wb,ws,'فهرس المدارس');
   const buffer=XLSX.write(wb,{type:'buffer',bookType:'xlsx'});
-  return new NextResponse(buffer,{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':"attachment; filename=nafs-483-school-results.xlsx",'Cache-Control':'private, no-store'}});
+  return new NextResponse(new Uint8Array(buffer),{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':"attachment; filename=nafs-483-school-results.xlsx",'Cache-Control':'private, no-store'}});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'تعذر إنشاء الفهرس'},{status:403})}
 }
