@@ -71,7 +71,9 @@ export async function POST(req:NextRequest){
    const answers={schemaVersion:2,sourceFileId:fileId,sourceRow:headerIdx+i+2,sourcePage:Number(get('page'))||null,excelSnapshot:{fileId,sha256:workbookSha,modifiedTime:meta.modifiedTime,rowNumber:headerIdx+i+2,page:Number(get('page'))||null},subjects:{arabic:get('subjectArabic')||null,math:get('subjectMath')||null,science:get('subjectScience')||null},sourceStatus:get('status'),reviewReason:get('reason')};
    if(rowWarnings)warnings.push('صف '+(headerIdx+i+2)+' يحتاج تحقق');
    return {row_number:headerIdx+i+2,student_name:get('name')||null,civil_id:get('civil')||null,school_name:school,stage,gender:get('gender')||null,score:validScore?Number(score):null,total:validTotal?Number(total):null,answers:importedEvidence(answers,evidence.get(Number(answers.sourcePage))||[],source),status:'pending_review'};
-  }).filter(r=>r.student_name||r.civil_id||r.score!==null);
+  // A documented PDF page remains part of coverage even when identity and
+  // score are unreadable. Retain it pending instead of silently dropping it.
+  }).filter(r=>r.student_name||r.civil_id||r.score!==null||(Number.isInteger(r.answers.sourcePage)&&Number(r.answers.sourcePage)>0));
   if(rows.length>5000)throw Error('عدد الصفوف يتجاوز الحد الآمن');
   let retained=0;
   // Preserve only a previously approved row with identical source and question evidence.
