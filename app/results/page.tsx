@@ -14,18 +14,21 @@ const color=['#09a58e','#238cb4','#b18a44'];
 function Bars({items}:{items:{label:string;value:number|null;hint?:string}[]}){return <div className="bars">{items.map((x,i)=><div key={x.label}><div className="bar-label"><span>{x.label}</span><b>{pct(x.value)}</b></div><div className="track" role="meter" aria-label={x.label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={x.value??undefined}><div style={{width:(x.value??0)+'%',background:color[i%3]}}/></div>{x.hint&&<small>{x.hint}</small>}</div>)}</div>}
 
 function LuminousBrand(){
- const [sound,setSound]=useState(false),[motion,setMotion]=useState(true),[wave,setWave]=useState(0);
  const audio=useRef<AudioContext|null>(null),lastTone=useRef(0);
- useEffect(()=>{const media=window.matchMedia('(prefers-reduced-motion: reduce)');setMotion(!media.matches);const change=()=>setMotion(!media.matches);media.addEventListener('change',change);return()=>{media.removeEventListener('change',change);void audio.current?.close();audio.current=null}},[]);
- function play(index:number,force=false){const context=audio.current;if((!sound&&!force)||!context||context.state!=='running'||Date.now()-lastTone.current<100)return;lastTone.current=Date.now();const oscillator=context.createOscillator(),gain=context.createGain(),now=context.currentTime;oscillator.type='sine';oscillator.frequency.value=220*Math.pow(2,([0,2,4,7,9][index%5]+12)/12);gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.035,now+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+.6);oscillator.connect(gain);gain.connect(context.destination);oscillator.start();oscillator.stop(now+.65);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect()}}
- async function toggleSound(){try{if(!audio.current)audio.current=new AudioContext();await audio.current.resume();setSound(!sound);if(!sound)play(2,true)}catch{setSound(false)}}
+ useEffect(()=>{
+  let disposed=false;
+  const unlock=()=>{try{if(!audio.current)audio.current=new AudioContext();if(audio.current.state==='suspended')void audio.current.resume().catch(()=>{});}catch{}};
+  document.addEventListener('pointerdown',unlock,{capture:true});
+  document.addEventListener('keydown',unlock,{capture:true});
+  return()=>{disposed=true;document.removeEventListener('pointerdown',unlock,true);document.removeEventListener('keydown',unlock,true);const context=audio.current;audio.current=null;if(disposed&&context&&context.state!=='closed')void context.close().catch(()=>{})};
+ },[]);
+ function play(index:number){const context=audio.current;if(!context||context.state!=='running'||Date.now()-lastTone.current<100)return;lastTone.current=Date.now();const oscillator=context.createOscillator(),gain=context.createGain(),now=context.currentTime;oscillator.type='sine';oscillator.frequency.value=220*Math.pow(2,([0,2,4,7,9][index%5]+12)/12);gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.035,now+.02);gain.gain.exponentialRampToValueAtTime(.0001,now+.6);oscillator.connect(gain);gain.connect(context.destination);oscillator.start();oscillator.stop(now+.65);oscillator.onended=()=>{oscillator.disconnect();gain.disconnect()}}
  return <div className="luminous-brand">
  <div className="brand-orbits" aria-hidden="true"/>
- <div className={'brand-dots '+(!motion?'brand-still':'')} key={wave} role="group" aria-label="كرات شعار وزارة التعليم التفاعلية">
- {[12,10,8,6].map((count,row)=><div className="brand-dot-row" key={row}>{Array.from({length:count},(_,column)=><button type="button" className="brand-dot" key={column} aria-label={'نغمة ضوئية '+(row*12+column+1)} style={{'--delay':(column*.09+row*.16)+'s','--size':(17-row*2)+'px'} as React.CSSProperties} onPointerEnter={()=>play(column+row)} onClick={()=>play(column+row)}><span/></button>)}</div>)}
+ <div className="brand-dots" role="img" aria-label="شعار وزارة التعليم بتوهج وحركة تلقائية">
+ {[12,10,8,6].map((count,row)=><div className="brand-dot-row" key={row}>{Array.from({length:count},(_,column)=><span className="brand-dot" key={column} aria-hidden="true" style={{'--delay':(column*.09+row*.16)+'s','--size':(17-row*2)+'px'} as React.CSSProperties} onPointerEnter={()=>play(column+row)} onPointerDown={()=>play(column+row)}><span/></span>)}</div>)}
  </div>
  <div className="brand-ar">وزارة التعليم</div><div className="brand-en" lang="en">Ministry of Education</div>
- <div className="brand-controls no-print"><button type="button" onClick={toggleSound} aria-pressed={sound}>{sound?'كتم الصوت':'تفعيل الصوت'}</button><button type="button" onClick={()=>{setWave(v=>v+1);play(4)}}>موجة ضوئية</button><button type="button" onClick={()=>setMotion(v=>!v)} aria-pressed={!motion}>{motion?'إيقاف الحركة':'تشغيل الحركة'}</button></div>
  </div>
 }
 
