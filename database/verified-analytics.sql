@@ -2,18 +2,18 @@ create or replace function public.nafs_verified_analytics(p_stage text default n
 returns jsonb language sql stable security invoker set search_path=public,pg_temp as $$
 with latest as materialized (
  select distinct on (drive_file_id) id,drive_file_id from public.nafs_result_imports
- where stage in ('primary3','middle3')
+ where stage in ('primary3','primary6','middle3')
  order by drive_file_id,modified_time desc nulls last,imported_at desc,id desc
 ), base as materialized (
  select r.*,i.drive_file_id,
  case when r.stage='primary3' then 20 else 30 end expected
  from public.nafs_result_import_rows r join latest i on i.id=r.import_id
- where r.stage in ('primary3','middle3')
+ where r.stage in ('primary3','primary6','middle3')
 ), models as (
- select case e.title when 'ثالث ابتدائي' then 'primary3' when 'ثالث متوسط' then 'middle3' end stage,
+ select case e.title when 'ثالث ابتدائي' then 'primary3' when 'سادس ابتدائي' then 'primary6' when 'ثالث متوسط' then 'middle3' end stage,
  q.question_number,q.correct_option
  from public.exams e join public.exam_questions q on q.exam_id=e.id
- where e.status='approved' and e.deleted_at is null and e.title in ('ثالث ابتدائي','ثالث متوسط')
+ where e.status='approved' and e.deleted_at is null and e.title in ('ثالث ابتدائي','سادس ابتدائي','ثالث متوسط')
 ), checked as materialized (
  select b.*,coalesce(v.valid,false) and b.status='verified' and b.total=b.expected
  and b.score is not null and b.score=v.awarded
@@ -24,7 +24,7 @@ with latest as materialized (
  select count(*)=b.expected and count(distinct (q->>'subject',q->>'number'))=b.expected
  and bool_and(coalesce(
  q->>'subject' in ('arabic','math','science')
- and (b.stage='middle3' or q->>'subject'<>'science')
+ and (b.stage<>'primary3' or q->>'subject'<>'science')
  and q->>'number' ~ '^([1-9]|10)$'
  and q->>'state' in ('clear','multiple','blank','faint')
  and q->>'awarded' in ('0','1')
