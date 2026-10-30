@@ -5,7 +5,7 @@ export async function GET(req:NextRequest){
  try{
   const p=req.nextUrl.searchParams;
   const stage=p.get('stage'),gender=p.get('gender'),subject=p.get('subject');
-  if(stage&&!['primary3','middle3'].includes(stage)||gender&&!['بنين','بنات'].includes(gender)||subject&&!['arabic','math','science'].includes(subject))return NextResponse.json({error:'قيمة فلتر غير صالحة'},{status:400});
+  if(stage&&!['primary3','primary6','middle3'].includes(stage)||gender&&!['بنين','بنات'].includes(gender)||subject&&!['arabic','math','science'].includes(subject))return NextResponse.json({error:'قيمة فلتر غير صالحة'},{status:400});
   const {data,error}=await serviceDb().rpc('nafs_verified_analytics',{p_stage:stage||null,p_gender:gender||null,p_school:p.get('school')||null,p_subject:subject||null,p_skill:p.get('skill')||null});
   if(error)throw error;
   if(!data||!data.summary)throw Error('Analytics unavailable');
