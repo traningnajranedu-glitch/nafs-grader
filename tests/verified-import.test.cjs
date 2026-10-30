@@ -10,4 +10,13 @@ const changed=clone(questions);changed[0].state='uncertain';assert.equal(carry(p
 const duplicates=clone(questions);duplicates[1]=duplicates[0];assert.equal(carry(previous,incoming,duplicates),null);
 const parsed=readQuestionEvidence([[1,'طالب اختبار','لغتي',1,null,'A','دون تظليل',0]]);assert.equal(parsed.get(1)[0].state,'blank');assert.equal(parsed.get(1)[0].awarded,0);
 assert.deepEqual(readSourceEvidence([['ملف المصدر','https://drive.google.com/file/d/source-pdf/view'],['بصمة PDF SHA256','a'.repeat(64)]]),source);assert.equal(readSourceEvidence([]),null);
-console.log('PASS: retain exact prior approval only; changed identity, source, score, incomplete/uncertain/duplicate answers and sixth grade remain pending');
+const pendingEvidence=m.exports.importedEvidence({sourcePage:1,reviewReason:'اسم الطالب يحتاج تدقيقًا'},questions,source);
+assert.equal(pendingEvidence.sourcePdfId,source.pdfId);assert.equal(pendingEvidence.sourceSha256,source.sha256);
+assert.equal(pendingEvidence.questions.length,20);assert.equal(pendingEvidence.evidenceVerification,'imported-unverified');
+assert.equal(pendingEvidence.reviewReason,'اسم الطالب يحتاج تدقيقًا');assert.equal(pendingEvidence.status,undefined);
+assert.equal(pendingEvidence.questions[0].studentName,undefined);assert.equal(questions[0].studentName,'طالب اختبار');
+const ambiguous=m.exports.importedEvidence({},[{...questions[0],state:'uncertain',choice:null,awarded:NaN}],null);
+assert.equal(ambiguous.questions[0].awarded,null);assert.equal(ambiguous.questions[0].state,'uncertain');
+assert.equal(ambiguous.sourcePdfId,undefined);assert.deepEqual(m.exports.importedEvidence({sourcePage:2},[],null),{sourcePage:2});
+assert.equal(retainedApproval({...previous,status:'pending_review'},{...incoming,answers:pendingEvidence},questions,source,keys,file),null);
+console.log('PASS: all imported rows retain unverified evidence; uncertain points stay null; only exact documented approvals carry forward');

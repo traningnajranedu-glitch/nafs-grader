@@ -3,6 +3,12 @@
 export type QuestionEvidence={subject:string;number:number;key:string;choice:string|null;state:string;awarded:number;studentName?:string};
 export type ImportRecord={row_number:number;student_name:string|null;civil_id:string|null;stage:string;gender:string|null;score:number|null;total:number|null;status:string;answers:Record<string,unknown>};
 export type SourceEvidence={pdfId:string;sha256:string};
+// Import source evidence for every row. Only retainedApproval may carry an
+// existing approval; workbook metadata and status text never grant approval.
+export function importedEvidence(answers:Record<string,unknown>,questions:QuestionEvidence[],source:SourceEvidence|null):Record<string,unknown>{
+ return {...answers,...(source?{sourcePdfId:source.pdfId,sourceSha256:source.sha256}:{}),
+  ...(questions.length?{questions:questions.map(({studentName,...q})=>({...q,awarded:Number.isFinite(q.awarded)?q.awarded:null})),evidenceVerification:'imported-unverified'}:{})};
+}
 const states:Record<string,string>={'تظليل واحد واضح':'clear','تظليل متعدد':'multiple','تظليل متعدد - خطأ':'multiple','دون تظليل':'blank','فارغ':'blank','فارغ - خطأ':'blank','تظليل خفيف':'faint','تظليل خفيف جدًا':'faint','تظليل خفيف جدًا - خطأ':'faint'};
 const subjects:Record<string,string>={'لغتي':'arabic','الرياضيات':'math','رياضيات':'math','العلوم':'science','علوم':'science'};
 export function readQuestionEvidence(matrix:unknown[][]){

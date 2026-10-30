@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {createHash} from 'node:crypto';
 import * as XLSX from 'xlsx';
-import {readQuestionEvidence,readSourceEvidence,retainedApproval,ImportRecord} from '../../../../lib/verified-import';
+import {readQuestionEvidence,readSourceEvidence,retainedApproval,importedEvidence,ImportRecord} from '../../../../lib/verified-import';
 import {driveToken,requireAdmin,serviceDb} from '../../../../lib/google-drive-server';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const folders:Record<string,string>={primary3:'16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR',middle3:'1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn',primary6:'1foYgnj5csR6hrrRAkI8on6iZkXv3YMe6'};
@@ -60,6 +60,9 @@ export async function POST(req:NextRequest){
   const school=schoolValues[0]||filenameLabel;
   if(!school)throw Error('تعذر تحديد تسمية المدرسة من الملف');
   if(!schoolValues.length)warnings.push('اسم المدرسة مستنتج مبدئيًا من اسم ملف المصدر، ويحتاج مطابقة قبل الاعتماد');
+  const qsheet=book.Sheets['الإجابات']||book.Sheets['الإجابات المقروءة'],metadataSheet=book.Sheets['بيانات المعالجة'];
+  const evidence=qsheet?readQuestionEvidence(XLSX.utils.sheet_to_json<unknown[]>(qsheet,{header:1,defval:'',raw:true})):new Map();
+  const source=metadataSheet?readSourceEvidence(XLSX.utils.sheet_to_json<unknown[]>(metadataSheet,{header:1,defval:'',raw:true})):null;
   const rows:ImportRecord[]=matrix.slice(headerIdx+1).map((row,i)=>{
    const get=(k:string)=>indices[k]<0?'':String(row[indices[k]]??'').trim();
    const score=get('score'),total=get('total'),validScore=score!==''&&Number.isFinite(Number(score)),validTotal=total!==''&&Number.isFinite(Number(total));
@@ -67,7 +70,7 @@ export async function POST(req:NextRequest){
    if(get('reason'))warnings.push('صف '+(headerIdx+i+2)+': '+get('reason'));
    const answers={schemaVersion:2,sourceFileId:fileId,sourceRow:headerIdx+i+2,sourcePage:Number(get('page'))||null,excelSnapshot:{fileId,sha256:workbookSha,modifiedTime:meta.modifiedTime,rowNumber:headerIdx+i+2,page:Number(get('page'))||null},subjects:{arabic:get('subjectArabic')||null,math:get('subjectMath')||null,science:get('subjectScience')||null},sourceStatus:get('status'),reviewReason:get('reason')};
    if(rowWarnings)warnings.push('صف '+(headerIdx+i+2)+' يحتاج تحقق');
-   return {row_number:headerIdx+i+2,student_name:get('name')||null,civil_id:get('civil')||null,school_name:school,stage,gender:get('gender')||null,score:validScore?Number(score):null,total:validTotal?Number(total):null,answers,status:'pending_review'};
+   return {row_number:headerIdx+i+2,student_name:get('name')||null,civil_id:get('civil')||null,school_name:school,stage,gender:get('gender')||null,score:validScore?Number(score):null,total:validTotal?Number(total):null,answers:importedEvidence(answers,evidence.get(Number(answers.sourcePage))||[],source),status:'pending_review'};
   }).filter(r=>r.student_name||r.civil_id||r.score!==null);
   if(rows.length>5000)throw Error('عدد الصفوف يتجاوز الحد الآمن');
   let retained=0;
@@ -76,9 +79,6 @@ export async function POST(req:NextRequest){
   if(stage==='primary3'||stage==='middle3'){
    const latest=await db.from('nafs_result_imports').select('id').eq('drive_file_id',fileId).order('modified_time',{ascending:false,nullsFirst:false}).order('imported_at',{ascending:false}).order('id',{ascending:false}).limit(1).maybeSingle();
    if(latest.error)throw latest.error;
-   const qsheet=book.Sheets['الإجابات']||book.Sheets['الإجابات المقروءة'],metadataSheet=book.Sheets['بيانات المعالجة'];
-   const evidence=qsheet?readQuestionEvidence(XLSX.utils.sheet_to_json<unknown[]>(qsheet,{header:1,defval:'',raw:true})):new Map();
-   const source=metadataSheet?readSourceEvidence(XLSX.utils.sheet_to_json<unknown[]>(metadataSheet,{header:1,defval:'',raw:true})):null;
    if(latest.data&&source&&evidence.size){
     const exam=await db.from('exams').select('id').eq('title',stage==='primary3'?'ثالث ابتدائي':'ثالث متوسط').eq('status','approved').is('deleted_at',null).maybeSingle();
     if(exam.error)throw exam.error;
