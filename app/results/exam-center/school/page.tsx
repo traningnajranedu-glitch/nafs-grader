@@ -1,12 +1,13 @@
 "use client";
 import {useEffect,useState} from "react";
+import * as XLSX from "xlsx";
 import {supabase} from "../../../../lib/supabase";
 const client=supabase;
 type School={id:string;name:string;stage:string|null;gender:string|null};
 type Student={id:string;student_code:string;full_name:string;grade:string;phone:string|null};
 const field={padding:12,borderRadius:10,border:"1px solid #b7d3dd",color:"#14334a",background:"#fff",width:"100%",boxSizing:"border-box" as const};
 const button={padding:"12px 18px",borderRadius:12,border:"1px solid #ffebaa",background:"linear-gradient(120deg,#fff2c1,#d5a244,#f8db86)",color:"#39250c",fontWeight:800 as const,cursor:"pointer"};
-export default function SchoolPortal(){const [email,setEmail]=useState(""),[password,setPassword]=useState(""),[token,setToken]=useState(""),[school,setSchool]=useState<School|null>(null),[students,setStudents]=useState<Student[]>([]),[name,setName]=useState(""),[code,setCode]=useState(""),[grade,setGrade]=useState(""),[phone,setPhone]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
+export default function SchoolPortal(){const [pending,setPending]=useState<Student[]>([]),[email,setEmail]=useState(""),[password,setPassword]=useState(""),[token,setToken]=useState(""),[school,setSchool]=useState<School|null>(null),[students,setStudents]=useState<Student[]>([]),[name,setName]=useState(""),[code,setCode]=useState(""),[grade,setGrade]=useState(""),[phone,setPhone]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);
 async function load(t:string){const r=await fetch("/api/results/exam-center/students",{headers:{Authorization:"Bearer "+t}}),j=await r.json();if(!r.ok){setNotice(j.error||"تعذر تحميل المدرسة");return}setSchool(j.school);setStudents(j.students||[])}
 useEffect(()=>{client?.auth.getSession().then(({data})=>{const t=data.session?.access_token;if(t){setToken(t);load(t)}})},[]);
 async function login(){setBusy(true);const {data,error}=await client!.auth.signInWithPassword({email:email.includes("@")?email:email+"@nafs-grader.vercel.app",password});setBusy(false);if(error||!data.session){setNotice("بيانات الدخول غير صحيحة أو الحساب غير مفعل");return}setToken(data.session.access_token);await load(data.session.access_token)}
