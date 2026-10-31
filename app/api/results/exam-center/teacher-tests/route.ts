@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from "next/server";
-import {serviceDb} from "../../../../../../lib/google-drive-server";
+import {serviceDb} from "../../../../../lib/google-drive-server";
 export const runtime="nodejs";
 const respond=(v:unknown,status=200)=>NextResponse.json(v,{status});
 async function context(req:NextRequest){const db=serviceDb();const token=req.headers.get("authorization")?.replace(/^Bearer\s+/i,"")||"";const auth=await db.auth.getUser(token);if(auth.error||!auth.data.user)throw Error("يرجى تسجيل الدخول");const r=await db.from("nafs_exam_teacher_accounts").select("user_id,full_name,subject").eq("user_id",auth.data.user.id).single();if(r.error||!r.data?.subject)throw Error("لا توجد مادة مسندة لهذا المعلم");return {db,teacher:r.data};}
