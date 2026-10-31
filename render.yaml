@@ -1,0 +1,15 @@
+services:
+  - type: worker
+    name: nafs-source-worker
+    runtime: python
+    plan: starter
+    branch: main
+    buildCommand: pip install -r worker/requirements.txt
+    startCommand: python worker/runner.py
+    envVars:
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: NAFS_WORKER_INTERVAL_SECONDS
+        value: "21600"
+      - key: PYTHONUNBUFFERED
+        value: "1"
