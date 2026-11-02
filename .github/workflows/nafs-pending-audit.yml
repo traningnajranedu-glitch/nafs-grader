@@ -1,0 +1,28 @@
+name: NAFS pending-only automatic audit
+on:
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nafs-pending-audit
+  cancel-in-progress: false
+jobs:
+  pending:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read only unresolved imported results
+        env:
+          SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/nafs-pending-audit.py
+      - name: Upload pending summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nafs-pending-audit
+          path: reports/nafs-pending-audit.json
+          retention-days: 7
