@@ -1,0 +1,27 @@
+name: NAFS unresolved source triage
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '28 2 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: nafs-pending-triage
+  cancel-in-progress: false
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Triage pending source references without writes
+        env:
+          SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/nafs-pending-triage.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nafs-pending-triage
+          path: reports/nafs-pending-triage.json
+          retention-days: 7
