@@ -1,0 +1,27 @@
+name: NAFS pending PDF reference matching
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 3 * * *'
+permissions:
+  contents: read
+jobs:
+  match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Google Drive read-only client
+        run: pip install google-api-python-client google-auth
+      - name: Compare pending references to actual Drive PDF IDs
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/nafs-source-match.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nafs-source-match
+          path: reports/nafs-source-match.json
+          retention-days: 7
