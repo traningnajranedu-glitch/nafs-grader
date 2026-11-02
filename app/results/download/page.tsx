@@ -1,5 +1,5 @@
-import './gold-motion.css';
 'use client';
+import './gold-motion.css';
 import {useEffect,useRef,useState} from 'react';
 import {supabase} from '../../../lib/supabase';
 type FileItem={id:string;name:string;url:string};
