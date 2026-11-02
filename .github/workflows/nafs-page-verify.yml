@@ -1,0 +1,30 @@
+name: NAFS pending PDF page verification
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 4 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: nafs-pending-page-verify
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDF and Drive dependencies
+        run: pip install google-api-python-client google-auth pypdf
+      - name: Verify PDF page bounds for pending references only
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/nafs-page-verify.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nafs-page-verify
+          path: reports/nafs-page-verify.json
+          retention-days: 7
