@@ -10,6 +10,7 @@ on:
       - 'scripts/nafs-run-real-omr.cjs'
       - 'scripts/nafs-scoring-policy.cjs'
       - 'scripts/nafs-scoring-eligibility.py'
+      - 'scripts/nafs-omr-slot-diagnostics.py'
       - 'tests/nafs-scoring-policy.test.cjs'
       - '.github/workflows/nafs-omr-batch-audit.yml'
 permissions:
@@ -41,6 +42,10 @@ jobs:
         if: always()
         run: |
           if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-scoring-eligibility.py; fi
+      - name: Diagnose OMR question layout
+        if: always()
+        run: |
+          if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-omr-slot-diagnostics.py; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -48,4 +53,5 @@ jobs:
           path: |
             reports/nafs-real-omr-sample.json
             reports/nafs-scoring-eligibility.json
+            reports/nafs-omr-slot-diagnostics.json
           retention-days: 7
