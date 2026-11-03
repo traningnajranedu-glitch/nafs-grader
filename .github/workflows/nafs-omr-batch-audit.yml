@@ -6,6 +6,7 @@ on:
   push:
     paths:
       - 'scripts/nafs-omr-batch-dry-run.py'
+      - 'scripts/nafs-run-real-omr.cjs'
       - '.github/workflows/nafs-omr-batch-audit.yml'
 permissions:
   contents: read
