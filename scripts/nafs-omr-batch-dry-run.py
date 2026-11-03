@@ -76,7 +76,7 @@ for stage,fid,page,row_id in selected:
             if proc.returncode==0:
                 result=json.loads(proc.stdout)
                 report["omr_readable"]+=1
-                report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"read","subjects":result["subjects"]})
+                report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"read","layout":result.get("layout"),"subjects":result["subjects"]})
             else:
                 retry=doc[page-1].get_pixmap(matrix=fitz.Matrix(2.0,2.0),colorspace=fitz.csGRAY,alpha=False)
                 with tempfile.NamedTemporaryFile(suffix=".gray",delete=False) as tmp2:
@@ -85,7 +85,7 @@ for stage,fid,page,row_id in selected:
                     second=subprocess.run(["node","scripts/nafs-run-real-omr.cjs",retry_path,str(retry.width),str(retry.height)],capture_output=True,text=True,timeout=60)
                     if second.returncode==0:
                         report["omr_readable"]+=1
-                        report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"read_after_resolution_retry","subjects":json.loads(second.stdout)["subjects"]})
+                        report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"read_after_resolution_retry","layout":json.loads(second.stdout).get("layout"),"subjects":json.loads(second.stdout)["subjects"]})
                     else:
                         report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"requires_review","error_type":"geometry_or_read_failure_after_retry"})
                 finally:
