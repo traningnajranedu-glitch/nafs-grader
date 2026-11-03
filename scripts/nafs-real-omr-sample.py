@@ -1,12 +1,12 @@
 """Real PDF smoke test: download and render five unresolved answer-sheet pages.
 No grades are calculated or changed. No student images leave the runner.
 """
-import io,json,os,pathlib,urllib.parse,urllib.request
+import io,json,os,pathlib,urllib.parse,urllib.request,subprocess,tempfile
 import fitz
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-report={"mode":"real_pdf_render_only","pages_rendered":0,"errors":0,"grades_written":0,"pages":[]}
+report={"mode":"real_omr_dry_run","pages_rendered":0,"omr_attempted":0,"omr_readable":0,"errors":0,"grades_written":0,"pages":[]}
 path=pathlib.Path("reports/nafs-real-omr-sample.json");path.parent.mkdir(exist_ok=True)
 url=os.environ["SUPABASE_URL"].rstrip("/")
 key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
@@ -42,11 +42,23 @@ for stage,fid,page in selected:
         pix=doc[page-1].get_pixmap(matrix=fitz.Matrix(1.5,1.5),colorspace=fitz.csGRAY,alpha=False)
         if pix.width<300 or pix.height<300:raise ValueError("Image resolution insufficient")
         report["pages_rendered"]+=1
-        report["pages"].append({"stage":stage,"rendered":True,"width":pix.width,"height":pix.height})
+        report["omr_attempted"]+=1
+        with tempfile.NamedTemporaryFile(suffix=".gray",delete=False) as tmp:
+            tmp.write(pix.samples);raw_path=tmp.name
+        try:
+            proc=subprocess.run(["node","scripts/nafs-run-real-omr.cjs",raw_path,str(pix.width),str(pix.height)],capture_output=True,text=True,timeout=60)
+            if proc.returncode==0:
+                result=json.loads(proc.stdout)
+                report["omr_readable"]+=1
+                report["pages"].append({"stage":stage,"rendered":True,"omr":"read","subjects":result["subjects"]})
+            else:
+                report["pages"].append({"stage":stage,"rendered":True,"omr":"requires_review","error_type":"geometry_or_read_failure"})
+        finally:
+            os.unlink(raw_path)
         doc.close()
     except Exception as exc:
         report["errors"]+=1
         report["pages"].append({"stage":stage,"rendered":False,"error_type":type(exc).__name__})
 path.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
-print("Rendered",report["pages_rendered"],"real PDF pages. No OMR grading or database changes.")
+print("Rendered",report["pages_rendered"],"real pages; OMR readable",report["omr_readable"],". No grading or database writes.")
 if report["pages_rendered"]!=5:raise SystemExit("Five-page rendering test incomplete")
