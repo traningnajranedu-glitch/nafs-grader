@@ -7,6 +7,8 @@ on:
     paths:
       - 'scripts/nafs-omr-batch-dry-run.py'
       - 'scripts/nafs-run-real-omr.cjs'
+      - 'scripts/nafs-scoring-policy.cjs'
+      - 'tests/nafs-scoring-policy.test.cjs'
       - '.github/workflows/nafs-omr-batch-audit.yml'
 permissions:
   contents: read
@@ -23,6 +25,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --ignore-scripts
+      - name: Verify scoring policy
+        run: node tests/nafs-scoring-policy.test.cjs
       - run: pip install google-api-python-client google-auth pymupdf
       - name: Read real answer sheets with existing OMR, never update grades
         env:
