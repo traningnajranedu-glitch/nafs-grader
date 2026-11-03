@@ -1,0 +1,29 @@
+name: NAFS five real PDF pages smoke test
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/nafs-real-omr-sample.py'
+      - '.github/workflows/nafs-real-omr-sample.yml'
+permissions:
+  contents: read
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDF and Drive packages
+        run: pip install google-api-python-client google-auth pymupdf
+      - name: Process five real pending PDF pages without grading
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
+          SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/nafs-real-omr-sample.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nafs-real-omr-sample
+          path: reports/nafs-real-omr-sample.json
+          retention-days: 7
