@@ -17,7 +17,7 @@ folders={"primary3":"1cotd9Fm4nvLR9RBqwHSVou6gqgNNcaiC","middle3":"1vMChKpteUA9i
 report["drive_sources"]={}
 for stage,folder in folders.items():
     try:
-        response=drive.files().list(q="'"+folder+"' in parents and trashed=false and mimeType='application/pdf'",fields="nextPageToken,files(id)",page_size=1000).execute()
+        response=drive.files().list(q="'"+folder+"' in parents and trashed=false and mimeType='application/pdf'",fields="nextPageToken,files(id)",pageSize=1000).execute()
         report["drive_sources"][stage]={"pdfs_visible_first_page":len(response.get("files",[])),"has_more":bool(response.get("nextPageToken")),"accessible":True}
     except Exception as exc:
         report["drive_sources"][stage]={"accessible":False,"error_type":type(exc).__name__}
