@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'scripts/nafs-real-omr-sample.py'
+      - 'scripts/nafs-run-real-omr.cjs'
       - '.github/workflows/nafs-real-omr-sample.yml'
 permissions:
   contents: read
@@ -13,9 +14,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install TypeScript runtime dependency
+        run: npm ci --ignore-scripts
       - name: Install PDF and Drive packages
         run: pip install google-api-python-client google-auth pymupdf
-      - name: Process five real pending PDF pages without grading
+      - name: Run real OMR on five pending PDF pages without grading
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
           SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
