@@ -23,7 +23,12 @@ for p in audit["pages"]:
   if len(key)!=10 or any(x not in ("أ","ب","ج","د") for x in key):reasons.append(name+":unverified_or_missing_key")
   if any(a.get("state")!="blank" for a in answers[10:]):reasons.append(name+":nonblank_unused_positions")
   if any(a.get("state")=="uncertain" for a in answers[:10]):reasons.append(name+":uncertain_mark")
- if keys.get("approval_policy")!="approved_for_auto_scoring":reasons.append("reference_keys_not_authorized")
+ if p["stage"]=="middle3":
+  if keys["stages"]["middle3"].get("sha256")!="5a95121e36ee54d6c6f1fcf8089eb3c91417983e077870ea615144776ec219ee":
+   reasons.append("middle3_original_key_hash_mismatch")
+  reasons.append("subject_column_mapping_requires_original_sheet_validation")
+ elif keys.get("approval_policy")!="approved_for_auto_scoring":
+  reasons.append("reference_keys_not_authorized")
  if not reasons:out["complete_30_question_candidates"]+=1
  else:out["needs_review"]+=1
  out["candidates"].append({"row_id":p.get("row_id"),"stage":p["stage"],"source_pdf_id":p.get("source_pdf_id"),"source_page":p.get("source_page"),"approval_ready":not reasons,"reasons":reasons})
