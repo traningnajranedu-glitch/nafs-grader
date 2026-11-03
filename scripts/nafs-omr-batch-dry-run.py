@@ -16,9 +16,11 @@ headers={"apikey":key,"Authorization":"Bearer "+key}
 selected=[]
 limit=int(os.environ.get("NAFS_BATCH_LIMIT","100"))
 if limit<1 or limit>500:raise ValueError("Batch limit must be 1..500")
-for stage in ("primary3","middle3","primary6"):
+stages=("primary3","middle3","primary6")
+quotas={stage:limit//len(stages)+(1 if i<limit%len(stages) else 0) for i,stage in enumerate(stages)}
+for stage in stages:
     offset=0
-    while len(selected)<limit:
+    while len([x for x in selected if x[0]==stage])<quotas[stage]:
         params=urllib.parse.urlencode({"select":"answers","status":"eq.pending_review","stage":"eq."+stage,"order":"id.asc","limit":"500","offset":str(offset)})
         with urllib.request.urlopen(urllib.request.Request(url+"/rest/v1/nafs_result_import_rows?"+params,headers=headers),timeout=45) as response:rows=json.load(response)
         if not rows:break
@@ -28,7 +30,7 @@ for stage in ("primary3","middle3","primary6"):
             fid=answers.get("sourcePdfId");page=answers.get("sourcePage")
             if isinstance(fid,str) and fid and type(page)==int and page>0 and (stage,fid,page) not in selected:
                 selected.append((stage,fid,page))
-            if len(selected)>=limit:break
+            if len([x for x in selected if x[0]==stage])>=quotas[stage]:break
         offset+=len(rows)
 cache={}
 for stage,fid,page in selected:
