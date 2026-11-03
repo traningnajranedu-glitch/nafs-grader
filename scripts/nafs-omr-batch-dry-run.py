@@ -35,7 +35,7 @@ for stage in stages:
     examined=0
     missing_source=0
     while len([x for x in selected if x[0]==stage])<quotas[stage]:
-        params=urllib.parse.urlencode({"select":"answers","status":"eq.pending_review","stage":"eq."+stage,"order":"id.asc","limit":"500","offset":str(offset)})
+        params=urllib.parse.urlencode({"select":"id,answers","status":"eq.pending_review","stage":"eq."+stage,"order":"id.asc","limit":"500","offset":str(offset)})
         with urllib.request.urlopen(urllib.request.Request(url+"/rest/v1/nafs_result_import_rows?"+params,headers=headers),timeout=45) as response:rows=json.load(response)
         if not rows:
             if offset>0 and examined==0:
@@ -47,15 +47,15 @@ for stage in stages:
             answers=row.get("answers") or {}
             if not isinstance(answers,dict):continue
             fid=answers.get("sourcePdfId");page=answers.get("sourcePage")
-            if isinstance(fid,str) and fid and type(page)==int and page>0 and (stage,fid,page) not in selected:
-                selected.append((stage,fid,page))
+            if isinstance(fid,str) and fid and type(page)==int and page>0 and not any(x[:3]==(stage,fid,page) for x in selected):
+                selected.append((stage,fid,page,row["id"]))
             else:
                 missing_source+=1
             if len([x for x in selected if x[0]==stage])>=quotas[stage]:break
         offset+=len(rows)
     report["stage_selection"][stage]={"selected":len([x for x in selected if x[0]==stage]),"rows_examined":examined,"missing_or_duplicate_source":missing_source}
 cache={}
-for stage,fid,page in selected:
+for stage,fid,page,row_id in selected:
     try:
         if fid not in cache:
             stream=io.BytesIO()
@@ -76,7 +76,7 @@ for stage,fid,page in selected:
             if proc.returncode==0:
                 result=json.loads(proc.stdout)
                 report["omr_readable"]+=1
-                report["pages"].append({"stage":stage,"rendered":True,"omr":"read","subjects":result["subjects"]})
+                report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"read","subjects":result["subjects"]})
             else:
                 retry=doc[page-1].get_pixmap(matrix=fitz.Matrix(2.0,2.0),colorspace=fitz.csGRAY,alpha=False)
                 with tempfile.NamedTemporaryFile(suffix=".gray",delete=False) as tmp2:
@@ -85,9 +85,9 @@ for stage,fid,page in selected:
                     second=subprocess.run(["node","scripts/nafs-run-real-omr.cjs",retry_path,str(retry.width),str(retry.height)],capture_output=True,text=True,timeout=60)
                     if second.returncode==0:
                         report["omr_readable"]+=1
-                        report["pages"].append({"stage":stage,"rendered":True,"omr":"read_after_resolution_retry","subjects":json.loads(second.stdout)["subjects"]})
+                        report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"read_after_resolution_retry","subjects":json.loads(second.stdout)["subjects"]})
                     else:
-                        report["pages"].append({"stage":stage,"rendered":True,"omr":"requires_review","error_type":"geometry_or_read_failure_after_retry"})
+                        report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":True,"omr":"requires_review","error_type":"geometry_or_read_failure_after_retry"})
                 finally:
                     os.unlink(retry_path)
         finally:
@@ -95,7 +95,7 @@ for stage,fid,page in selected:
         doc.close()
     except Exception as exc:
         report["errors"]+=1
-        report["pages"].append({"stage":stage,"rendered":False,"error_type":type(exc).__name__})
+        report["pages"].append({"stage":stage,"row_id":row_id,"source_pdf_id":fid,"source_page":page,"rendered":False,"error_type":type(exc).__name__})
 path.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
 print("Rendered",report["pages_rendered"],"real pages; OMR readable",report["omr_readable"],". No grading or database writes.")
 if report["pages_rendered"]==0:raise SystemExit("No real pages rendered")
