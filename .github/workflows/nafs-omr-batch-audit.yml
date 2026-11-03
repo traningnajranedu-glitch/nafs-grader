@@ -1,4 +1,5 @@
 name: NAFS automated OMR batch audit
+# Manual full-correction request: run verified OMR audit; grade writes remain disabled until answer-key mapping is validated.
 on:
   workflow_dispatch:
   schedule:
