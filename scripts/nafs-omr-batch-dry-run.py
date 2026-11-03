@@ -14,24 +14,38 @@ creds=Credentials.from_service_account_info(json.loads(os.environ["GOOGLE_SERVIC
 drive=build("drive","v3",credentials=creds,cache_discovery=False)
 headers={"apikey":key,"Authorization":"Bearer "+key}
 selected=[]
+run_number=int(os.environ.get("GITHUB_RUN_NUMBER","1"))
+rotation=(run_number-1)%6
+report["rotation"]=rotation
+report["stage_selection"]={}
 limit=int(os.environ.get("NAFS_BATCH_LIMIT","100"))
 if limit<1 or limit>500:raise ValueError("Batch limit must be 1..500")
 stages=("primary3","middle3","primary6")
 quotas={stage:limit//len(stages)+(1 if i<limit%len(stages) else 0) for i,stage in enumerate(stages)}
 for stage in stages:
-    offset=0
+    offset=rotation*500
+    examined=0
+    missing_source=0
     while len([x for x in selected if x[0]==stage])<quotas[stage]:
         params=urllib.parse.urlencode({"select":"answers","status":"eq.pending_review","stage":"eq."+stage,"order":"id.asc","limit":"500","offset":str(offset)})
         with urllib.request.urlopen(urllib.request.Request(url+"/rest/v1/nafs_result_import_rows?"+params,headers=headers),timeout=45) as response:rows=json.load(response)
-        if not rows:break
+        if not rows:
+            if offset>0 and examined==0:
+                offset=0
+                continue
+            break
         for row in rows:
+            examined+=1
             answers=row.get("answers") or {}
             if not isinstance(answers,dict):continue
             fid=answers.get("sourcePdfId");page=answers.get("sourcePage")
             if isinstance(fid,str) and fid and type(page)==int and page>0 and (stage,fid,page) not in selected:
                 selected.append((stage,fid,page))
+            else:
+                missing_source+=1
             if len([x for x in selected if x[0]==stage])>=quotas[stage]:break
         offset+=len(rows)
+    report["stage_selection"][stage]={"selected":len([x for x in selected if x[0]==stage]),"rows_examined":examined,"missing_or_duplicate_source":missing_source}
 cache={}
 for stage,fid,page in selected:
     try:
