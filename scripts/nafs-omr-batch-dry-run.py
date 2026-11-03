@@ -13,6 +13,14 @@ key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 creds=Credentials.from_service_account_info(json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]),scopes=["https://www.googleapis.com/auth/drive.readonly"])
 drive=build("drive","v3",credentials=creds,cache_discovery=False)
 headers={"apikey":key,"Authorization":"Bearer "+key}
+folders={"primary3":"1cotd9Fm4nvLR9RBqwHSVou6gqgNNcaiC","middle3":"1vMChKpteUA9injYnPcMifpLtCvpIVtjL","primary6":"1VCyxS4iTC2_sXsCT1AM3zJZtvqZXKkO8"}
+report["drive_sources"]={}
+for stage,folder in folders.items():
+    try:
+        response=drive.files().list(q="'"+folder+"' in parents and trashed=false and mimeType='application/pdf'",fields="nextPageToken,files(id)",page_size=1000).execute()
+        report["drive_sources"][stage]={"pdfs_visible_first_page":len(response.get("files",[])),"has_more":bool(response.get("nextPageToken")),"accessible":True}
+    except Exception as exc:
+        report["drive_sources"][stage]={"accessible":False,"error_type":type(exc).__name__}
 selected=[]
 run_number=int(os.environ.get("GITHUB_RUN_NUMBER","1"))
 rotation=(run_number-1)%6
@@ -70,7 +78,18 @@ for stage,fid,page in selected:
                 report["omr_readable"]+=1
                 report["pages"].append({"stage":stage,"rendered":True,"omr":"read","subjects":result["subjects"]})
             else:
-                report["pages"].append({"stage":stage,"rendered":True,"omr":"requires_review","error_type":"geometry_or_read_failure"})
+                retry=doc[page-1].get_pixmap(matrix=fitz.Matrix(2.0,2.0),colorspace=fitz.csGRAY,alpha=False)
+                with tempfile.NamedTemporaryFile(suffix=".gray",delete=False) as tmp2:
+                    tmp2.write(retry.samples);retry_path=tmp2.name
+                try:
+                    second=subprocess.run(["node","scripts/nafs-run-real-omr.cjs",retry_path,str(retry.width),str(retry.height)],capture_output=True,text=True,timeout=60)
+                    if second.returncode==0:
+                        report["omr_readable"]+=1
+                        report["pages"].append({"stage":stage,"rendered":True,"omr":"read_after_resolution_retry","subjects":json.loads(second.stdout)["subjects"]})
+                    else:
+                        report["pages"].append({"stage":stage,"rendered":True,"omr":"requires_review","error_type":"geometry_or_read_failure_after_retry"})
+                finally:
+                    os.unlink(retry_path)
         finally:
             os.unlink(raw_path)
         doc.close()
