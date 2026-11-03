@@ -1,0 +1,22 @@
+name: NAFS OMR sample classification check
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/nafs-omr-sample-check.py'
+      - '.github/workflows/nafs-omr-sample-check.yml'
+permissions:
+  contents: read
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check OMR classification sample
+        run: python scripts/nafs-omr-sample-check.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nafs-omr-sample-check
+          path: reports/nafs-omr-sample-check.json
