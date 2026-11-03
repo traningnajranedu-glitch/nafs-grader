@@ -11,6 +11,7 @@ on:
       - 'scripts/nafs-scoring-policy.cjs'
       - 'scripts/nafs-scoring-eligibility.py'
       - 'scripts/nafs-omr-slot-diagnostics.py'
+      - 'scripts/nafs-provisional-reference-score.py'
       - 'tests/nafs-scoring-policy.test.cjs'
       - '.github/workflows/nafs-omr-batch-audit.yml'
 permissions:
@@ -46,6 +47,10 @@ jobs:
         if: always()
         run: |
           if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-omr-slot-diagnostics.py; fi
+      - name: Calculate provisional reference comparisons
+        if: always()
+        run: |
+          if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-provisional-reference-score.py; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -54,4 +59,5 @@ jobs:
             reports/nafs-real-omr-sample.json
             reports/nafs-scoring-eligibility.json
             reports/nafs-omr-slot-diagnostics.json
+            reports/nafs-provisional-reference-scores.json
           retention-days: 7
