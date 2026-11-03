@@ -9,6 +9,7 @@ on:
       - 'scripts/nafs-omr-batch-dry-run.py'
       - 'scripts/nafs-run-real-omr.cjs'
       - 'scripts/nafs-scoring-policy.cjs'
+      - 'scripts/nafs-scoring-eligibility.py'
       - 'tests/nafs-scoring-policy.test.cjs'
       - '.github/workflows/nafs-omr-batch-audit.yml'
 permissions:
@@ -36,9 +37,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
           NAFS_BATCH_LIMIT: '100'
         run: python scripts/nafs-omr-batch-dry-run.py
+      - name: Verify per-row scoring eligibility
+        if: always()
+        run: |
+          if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-scoring-eligibility.py; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: nafs-omr-batch-audit
-          path: reports/nafs-real-omr-sample.json
+          path: |
+            reports/nafs-real-omr-sample.json
+            reports/nafs-scoring-eligibility.json
           retention-days: 7
