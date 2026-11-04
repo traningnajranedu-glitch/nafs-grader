@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
 import {supabase} from '../../../lib/supabase';
+import SearchableSchoolSelect from '../../components/searchable-school-select';
 type School={school:string;students:number;withQuestions:number;gender:string};
 type Student={id:string;name:string;civilId:string;grade:string;gender:string;score:number|null;total:number|null;subjects:{key:string;label:string;value:number|string}[];questions:{subject:string;subjectLabel:string;number:number;choice:string|null;correctness:string;awarded:number|null}[]};
 const stages=[{id:'primary3',label:'ثالث ابتدائي'},{id:'primary6',label:'سادس ابتدائي'},{id:'middle3',label:'ثالث متوسط'}];
@@ -27,7 +28,7 @@ export default function IndividualSchoolResults(){
  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:15}}>
  <label>01 · المرحلة الدراسية<select value={stage} onChange={e=>{setStage(e.target.value);setSchool('')}} style={{...field,display:'block',marginTop:8}}><option value="">اختر المرحلة</option>{stages.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></label>
  <label>02 · الجنس<select value={gender} onChange={e=>{setGender(e.target.value);setSchool('')}} style={{...field,display:'block',marginTop:8}}><option value="">بنين وبنات</option><option value="بنين">بنين</option><option value="بنات">بنات</option></select></label>
- <label>03 · المدرسة<select value={school} onChange={e=>setSchool(e.target.value)} disabled={!stage} style={{...field,display:'block',marginTop:8}}><option value="">اختر المدرسة</option>{selectedSchools.map((s,i)=><option key={s.school+'-'+s.gender+'-'+i} value={s.school}>{s.school} · {s.gender} ({s.students})</option>)}</select></label>
+ <label>03 · المدرسة<SearchableSchoolSelect options={selectedSchools.map((s,i)=>({value:s.school,label:s.school,description:s.gender+' · '+s.students+' سجل'}))} value={school} onChange={setSchool} disabled={!stage} placeholder="اكتب اسم المدرسة للبحث..." style={{...field,display:'block',marginTop:8}}/></label>
  </div>
  <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:20}}><button disabled={!school||loading} onClick={()=>void showResults()} style={{...btn,background:'linear-gradient(110deg,#00d7b5,#079fc5)',color:'#fff'}}>عرض نتائج المدرسة</button><button disabled={!loaded||!students.length||busy} onClick={()=>void exportExcel()} style={{...btn,background:'linear-gradient(110deg,#f3ca70,#c59643)',color:'#12344a'}}> {busy?'جارٍ إعداد Excel…':'↓ تصدير ملف Excel بورقتين'}</button></div>
  {loading&&<p style={{color:'#bde8ee'}}>جارٍ تحميل البيانات…</p>}
