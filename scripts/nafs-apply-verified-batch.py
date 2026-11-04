@@ -9,7 +9,7 @@ ROOT=pathlib.Path("reports")
 elig=json.loads((ROOT/"nafs-scoring-eligibility.json").read_text(encoding="utf-8"))
 keys=json.loads(pathlib.Path("data/nafs-answer-keys-2026.json").read_text(encoding="utf-8"))
 report={"mode":"conditional_verified_write","write_enabled":WRITE,"candidates":0,"updated":0,
-        "verified_after_write":0,"skipped":0,"by_stage":{},"skip_reasons":{}}
+        "verified_after_write":0,"post_write_failures":0,"skipped":0,"by_stage":{},"skip_reasons":{}}
 if keys.get("approval_policy")!="approved_for_auto_scoring":
     raise SystemExit("Approved answer-key policy is missing.")
 def api(path,method="GET",payload=None,prefer=None):
@@ -21,7 +21,7 @@ def api(path,method="GET",payload=None,prefer=None):
         raw=response.read()
         return json.loads(raw.decode("utf-8")) if raw else []
 def get_rows(row_id):
-    q=urllib.parse.urlencode({"id":"eq."+row_id,"select":"id,import_id,stage,status,student_name,school_name,gender,total,answers","limit":"1"})
+    q=urllib.parse.urlencode({"id":"eq."+row_id,"select":"id,import_id,stage,status,student_name,school_name,gender,total,score,answers","limit":"1"})
     return api("/rest/v1/nafs_result_import_rows?"+q)
 def check_latest(import_id):
     q=urllib.parse.urlencode({"id":"eq."+str(import_id),"select":"id,drive_file_id","limit":"1"})
@@ -120,10 +120,14 @@ for candidate in elig.get("candidates",[]):
     report["updated"]+=1
     report["by_stage"][stage]=report["by_stage"].get(stage,0)+1
     verify=get_rows(row_id)
-    if len(verify)==1 and verify[0].get("status")=="verified" and int(float(verify[0].get("score") or -1))==score and int(float(verify[0].get("total") or 0))==expected and len((verify[0].get("answers") or {}).get("questions",[]))==expected:
+    try:verified_score=int(float(verify[0].get("score"))) if len(verify)==1 and verify[0].get("score") is not None else -1
+    except (TypeError,ValueError):verified_score=-1
+    try:verified_total=int(float(verify[0].get("total"))) if len(verify)==1 and verify[0].get("total") is not None else 0
+    except (TypeError,ValueError):verified_total=0
+    if len(verify)==1 and verify[0].get("status")=="verified" and verified_score==score and verified_total==expected and len((verify[0].get("answers") or {}).get("questions",[]))==expected:
         report["verified_after_write"]+=1
     else:
-        skip("post_write_verification_failed")
+        report["post_write_failures"]+=1
 (ROOT/"nafs-write-verification.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
 print("Candidates",report["candidates"],"updated",report["updated"],"verified after write",report["verified_after_write"],"skipped",report["skipped"])
 if WRITE and report["updated"]!=report["verified_after_write"]:
