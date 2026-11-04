@@ -27,13 +27,21 @@ for p in audit.get("pages",[]):
     stage_keys=stage_key.get("subjects",{})
     if keys.get("approval_policy")!="approved_for_auto_scoring":reasons.append("answer_key_not_approved")
     subjects=p.get("subjects",[])
-    if len(subjects)!=len(EXPECTED[stage]):reasons.append("subject_grid_count_mismatch")
+    # The printed legacy sheet physically contains three subject grids for both stages.
+    # primary3 scores only the first two (لغتي، رياضيات); the third must be empty.
+    if len(subjects)!=3:reasons.append("physical_subject_grid_count_mismatch")
+    if stage=="primary3" and len(subjects)>2:
+        extra=subjects[2].get("answers",[])
+        if len(extra)!=20 or any(a.get("state")!="blank" for a in extra):
+            reasons.append("unexpected_third_subject_grid_data")
     questions=[]
     for i,name in enumerate(EXPECTED[stage]):
         if i>=len(subjects):reasons.append(name+":missing_subject_grid");continue
         answers=subjects[i].get("answers",[])
         key=stage_keys.get(name,[])
         if len(answers)!=20:reasons.append(name+":unexpected_grid_size")
+        elif any(a.get("state")!="blank" for a in answers[10:]):
+            reasons.append(name+":unexpected_mark_after_question_10")
         if len(key)!=10 or any(x not in CHOICE for x in key):reasons.append(name+":missing_or_invalid_key");continue
         for qnum,(reading,arabic_key) in enumerate(zip(answers[:10],key),start=1):
             state=reading.get("state");choice=reading.get("choice")
