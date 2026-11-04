@@ -68,9 +68,14 @@ def metadata(stage,row_id,fid,page,import_id,expected_sha,gender,total,has_name)
             "source_sha256":expected_sha,"source_hash_matches":bool(expected_sha and hashes.get(fid)==str(expected_sha).lower()),
             "gender_valid":gender in ("بنين","بنات"),"student_name_present":has_name,"total_matches":total_matches}
 def verified_layout(result):
+    # OMR geometry detection is not proof that this PDF page is the
+    # approved student-sheet layout. Never promote a read to a verified
+    # layout without an independent, recorded comparison against the
+    # approved blank student sheet and its question/option ordering.
     layout=dict(result.get("layout") or {})
-    layout["verified_against_student_sheet"]=True
-    layout["verification_method"]="visual_student_sheet_and_answer_key_alignment"
+    layout["verified_against_student_sheet"]=False
+    layout["verification_method"]="omr_geometry_only_independent_layout_match_not_performed"
+    layout["approval_blocked_reason"]="student_sheet_layout_and_question_order_require_independent_verification"
     return layout
 for stage,fid,page,row_id,import_id,expected_sha,gender,total,has_name in selected:
     base=metadata(stage,row_id,fid,page,import_id,expected_sha,gender,total,has_name)
