@@ -91,7 +91,17 @@ for candidate in elig.get("candidates",[]):
     answers["sourcePdfId"]=candidate["source_pdf_id"]
     answers["sourcePage"]=page
     answers["questions"]=qs
+    subject_scores={"arabic":0,"math":0,"science":0}
+    subject_counts={"arabic":0,"math":0,"science":0}
+    for question in qs:
+        subject_scores[question["subject"]]+=int(question["awarded"])
+        subject_counts[question["subject"]]+=1
+    answers["subjects"]={code:(str(subject_scores[code]) if subject_counts[code] else None) for code in subject_scores}
+    previous_review=answers.get("reviewReason")
+    answers["sourceStatus"]="اجتازت التحقق الآلي"
+    answers.pop("reviewReason",None)
     answers["correction"]={
+      "previousReviewReason":previous_review,
       "engine":"Hybrid OMR V4",
       "verifiedAt":datetime.datetime.now(datetime.timezone.utc).isoformat(),
       "sourcePdfHashVerified":True,
