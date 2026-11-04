@@ -27,7 +27,7 @@ for p in audit.get("pages",[]):
     stage_keys=stage_key.get("subjects",{})
     if keys.get("approval_policy")!="approved_for_auto_scoring":reasons.append("answer_key_not_approved")
     subjects=p.get("subjects",[])
-    if len(subjects)!=3:reasons.append("subject_grid_count_mismatch")
+    if len(subjects)!=len(EXPECTED[stage]):reasons.append("subject_grid_count_mismatch")
     questions=[]
     for i,name in enumerate(EXPECTED[stage]):
         if i>=len(subjects):reasons.append(name+":missing_subject_grid");continue
