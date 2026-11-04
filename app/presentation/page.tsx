@@ -48,7 +48,7 @@ export default function Presentation(){
  @media(max-width:430px){.cards,.tiles{grid-template-columns:1fr}.actions .ghost:first-child{display:none}.tocgrid{grid-template-columns:1fr}.hero h1{font-size:36px}.answer-sheet{display:none}footer{padding:0 13px}}
  @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
  @media print{.actions,footer,.scanline,.answer-sheet{display:none!important}.stage{min-height:100vh;page-break-after:always}.slide{animation:none}.deck{background:#050d18!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
- \`}</style>
+ `}</style>
  <div className="scanline"/><header><div className="brand"><span className="seal">◎</span><span>المصحح الآلي <small>NAFS • 2026 / DIGITAL PRESENTATION</small></span></div><div className="actions"><button className="ghost" onClick={()=>T(true)}>▦ فهرس الشرائح</button><button className="ghost" onClick={()=>window.print()}>↓ تصدير PDF</button></div></header>
  <section className="stage"><div className="answer-sheet"><div className="sheet-head"><i/><i/></div><div className="sheet-grid">{Array.from({length:50},(_,i)=><i key={i}/>)}</div><div className="sheet-lines"/><div className="sheet-lines" style={{width:'55%'}}/></div><article className="slide" key={n}><div className="eyebrow">{s.tag}</div><h1>{s.title}</h1><p className="desc">{s.desc}</p>
  {s.hero&&<div className="hero-panel"><div className="hero-rule"/><div className="hero-meta"><span>الإدارة العامة للتعليم بنجران</span><span>عرض تنفيذي للإدارة</span><span>04 NOV 2026</span></div></div>}
