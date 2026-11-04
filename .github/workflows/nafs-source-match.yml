@@ -1,6 +1,10 @@
 name: NAFS pending PDF reference matching
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/nafs-source-match.py'
+      - '.github/workflows/nafs-source-match.yml'
   schedule:
     - cron: '37 3 * * *'
 permissions:
