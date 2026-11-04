@@ -1,5 +1,5 @@
 name: NAFS automated OMR batch audit
-# Manual full-correction request: run verified OMR audit; grade writes remain disabled until answer-key mapping is validated.
+# Process only source-hash-matched, identity-complete, layout-verified rows; uncertain marks remain pending.
 on:
   workflow_dispatch:
   schedule:
@@ -12,6 +12,7 @@ on:
       - 'scripts/nafs-scoring-eligibility.py'
       - 'scripts/nafs-omr-slot-diagnostics.py'
       - 'scripts/nafs-provisional-reference-score.py'
+      - 'scripts/nafs-apply-verified-batch.py'
       - 'tests/nafs-scoring-policy.test.cjs'
       - '.github/workflows/nafs-omr-batch-audit.yml'
 permissions:
@@ -52,6 +53,13 @@ jobs:
         if: always()
         run: |
           if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-provisional-reference-score.py; fi
+      - name: Apply only fully verified scores to Supabase
+        if: success()
+        env:
+          SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
+          NAFS_WRITE_APPROVED: 'true'
+        run: python scripts/nafs-apply-verified-batch.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -61,4 +69,5 @@ jobs:
             reports/nafs-scoring-eligibility.json
             reports/nafs-omr-slot-diagnostics.json
             reports/nafs-provisional-reference-scores.json
+            reports/nafs-write-verification.json
           retention-days: 7
