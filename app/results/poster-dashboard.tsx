@@ -4,9 +4,9 @@ import {MasteryRing as Ring,DifficultyChart} from './interactive-charts';
 type Subject={stage:string;subject:string;responses:number;correct:number;percent:number};
 type School={stage:string;school:string;students:number;verified:number;average:number|null;mastery:number|null};
 type Data={subjects:Subject[];questions:{stage:string;subject:string;number:number;percent:number}[];schools:School[];stages:{stage:string;students:number;verified:number;missing:number}[]};
-const stages:Record<string,string>={primary3:'الثالث الابتدائي',middle3:'الثالث المتوسط'};
+const stages:Record<string,string>={primary3:'الثالث الابتدائي',primary6:'السادس الابتدائي',middle3:'الثالث المتوسط'};
 const subjects:Record<string,string>={arabic:'لغتي',math:'الرياضيات',science:'العلوم'};
-const tones:Record<string,string>={primary3:'#df5388',middle3:'#8753cb'};
+const tones:Record<string,string>={primary3:'#df5388',primary6:'#159b91',middle3:'#8753cb'};
 
 export default function PosterDashboard({data,school,onSchool}:{data:Data;school:string;onSchool:(s:string)=>void}){
  const {format:f}=useNumbers();const fmt=(v:number|null)=>v===null?'—':f(Number(v).toFixed(1)+'%');
