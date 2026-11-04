@@ -27,7 +27,7 @@ export default function Presentation(){
  const go=(v:number)=>{const next=Math.max(0,Math.min(slides.length-1,v));if(next===n)return;D(next>n?1:-1);A(true);S(next);window.setTimeout(()=>A(false),650);T(false)};
  useEffect(()=>{const k=(e:KeyboardEvent)=>{if(['ArrowLeft','PageDown',' '].includes(e.key)){e.preventDefault();go(n+1)}if(['ArrowRight','PageUp'].includes(e.key)){e.preventDefault();go(n-1)}if(e.key==='Home')go(0);if(e.key==='End')go(slides.length-1);if(e.key==='Escape')T(false)};window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k)},[n]);
  return <main dir="rtl" className="deck">
- <style jsx global>{String.raw`
+ <style jsx global>{`
  @import url('https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
  *{box-sizing:border-box}html,body{margin:0;background:#050d18;color:#effaff;font-family:'Alexandria','IBM Plex Sans Arabic',Tahoma,sans-serif}
  .deck{--cyan:#42f5e5;--blue:#42a5ff;--lime:#c9ff5c;min-height:100vh;position:relative;overflow:hidden;background:radial-gradient(ellipse at 12% 12%,#063c4c 0,transparent 35%),radial-gradient(ellipse at 86% 82%,#22205a 0,transparent 34%),linear-gradient(135deg,#050d18,#071726 55%,#090f22)}
