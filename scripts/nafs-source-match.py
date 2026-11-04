@@ -2,9 +2,9 @@
 import collections,datetime,json,os,pathlib,urllib.parse,urllib.request
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
-FOLDERS={"primary3":"1cotd9Fm4nvLR9RBqwHSVou6gqgNNcaiC","middle3":"1vMChKpteUA9injYnPcMifpLtCvpIVtjL","primary6":"1VCyxS4iTC2_sXsCT1AM3zJZtvqZXKkO8"}
+FOLDERS={"primary3":"1cotd9Fm4nvLR9RBqwHSVou6gqgNNcaiC","middle3":"1vMChKpteUA9injYnPcMifpLtCvpIVtjL"}
 out=pathlib.Path("reports/nafs-source-match.json");out.parent.mkdir(exist_ok=True)
-report={"mode":"read_only","created_at":datetime.datetime.now(datetime.timezone.utc).isoformat(),"stages":{},"student_data_exported":False,"grades_changed":0,"approvals":0}
+report={"mode":"read_only","created_at":datetime.datetime.now(datetime.timezone.utc).isoformat(),"stages":{},"excluded_stages":["primary6"],"student_data_exported":False,"grades_changed":0,"approvals":0}
 raw=os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"];creds=Credentials.from_service_account_info(json.loads(raw),scopes=["https://www.googleapis.com/auth/drive.readonly"])
 drive=build("drive","v3",credentials=creds,cache_discovery=False)
 url=os.environ["SUPABASE_URL"].rstrip("/");key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
