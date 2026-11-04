@@ -4,12 +4,14 @@ import catalog from '../../../../data/nafs-school-result-files-20261029.json';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const FOLDERS=[{stage:'primary3',id:'16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR'},{stage:'middle3',id:'1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn'}] as const;
+type ListedFile={id:string;name:string;modifiedTime:string|null;url:string};
+type ListedStage={stage:string;folderItems:number;folderAccessible:boolean;folderName:string|null;sampleTypes:string[];emptyReason:string|null;folderUrl:string;count:number;lastModified:string|null;files:ListedFile[]};
 type DriveFile={id:string;name:string;mimeType:string;modifiedTime?:string;webViewLink?:string;size?:string};
 export async function GET(req:NextRequest){
  try{
   await requireAdmin(req.headers.get('authorization'));
   const token=await driveToken();
-  const stages=await Promise.all(FOLDERS.map(async folder=>{
+  const stages:ListedStage[]=await Promise.all(FOLDERS.map(async folder=>{
    const files:DriveFile[]=[];let pageToken:string|undefined;
    const folderResponse=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(folder.id)+'?fields=id,name,mimeType,trashed,capabilities(canListChildren),owners(emailAddress)&supportsAllDrives=true',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
    const folderInfo=await folderResponse.json().catch(()=>({}));
