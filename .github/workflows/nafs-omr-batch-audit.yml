@@ -39,7 +39,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
           NAFS_BATCH_LIMIT: '500'
-          NAFS_BATCH_ROTATION_BASE: '45'
+          NAFS_BATCH_ROTATION: '2'
         run: python scripts/nafs-omr-batch-dry-run.py
       - name: Verify per-row scoring eligibility
         if: always()
