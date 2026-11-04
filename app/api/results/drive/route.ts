@@ -21,7 +21,7 @@ export async function GET(req:NextRequest){
     if(!response.ok){const failure=await response.json().catch(()=>({}));throw Error('تعذر قراءة مجلد '+folder.stage+' (HTTP '+response.status+'): '+String(failure.error?.message||'تحقق من صلاحية حساب Google للمجلد'))}
     const body=await response.json();files.push(...(body.files||[]));pageToken=body.nextPageToken;
    }while(pageToken&&files.length<1000);
-   const excel=files.filter(f=>(/\.xlsx?$/i.test(f.name)||f.mimeType==='application/vnd.google-apps.spreadsheet')&&(folder.stage!=='primary6'||(!/ملخص|تقرير|احصائ|إحصائ|مؤشر|قالب|نموذج|جديدين/i.test(f.name))));
+   const excel=files.filter(f=>/\.xlsx?$/i.test(f.name)||f.mimeType==='application/vnd.google-apps.spreadsheet');
    return {stage:folder.stage,folderItems:files.length,folderAccessible:true,folderName:folderInfo.name||null,sampleTypes:[...new Set(files.map(f=>f.mimeType))].slice(0,5),emptyReason:files.length===0?'المجلد متاح للاتصال الحالي ولكن واجهة Google Drive أعادت صفر عنصر؛ تحقق من هوية الحساب المرتبط أو بنية المجلد.':excel.length===0?'عناصر موجودة ولكن لا توجد ملفات نتائج Excel مطابقة.':null,folderUrl:'https://drive.google.com/drive/folders/'+folder.id,count:excel.length,lastModified:excel.map(f=>f.modifiedTime||'').sort().at(-1)||null,files:excel.map(f=>({id:f.id,name:f.name,modifiedTime:f.modifiedTime||null,url:f.webViewLink||'https://drive.google.com/file/d/'+f.id+'/view'}))};
   }));
   return NextResponse.json({stages,checkedAt:new Date().toISOString(),source:'Google Drive file metadata; not verified sheet scores'},{headers:{'Cache-Control':'no-store'}});
