@@ -22,7 +22,8 @@ for stage,folder in folders.items():
         report["drive_sources"][stage]={"accessible":False,"error_type":type(exc).__name__}
 selected=[]
 run_number=int(os.environ.get("GITHUB_RUN_NUMBER","1"))
-rotation=int(os.environ.get("NAFS_BATCH_ROTATION",str((run_number-1)%6)))
+rotation_base=int(os.environ.get("NAFS_BATCH_ROTATION_BASE","1"))
+rotation=int(os.environ.get("NAFS_BATCH_ROTATION",str(max(0,run_number-rotation_base))))
 report["rotation"]=rotation
 report["excluded_stages"]=["primary6"]
 report["stage_selection"]={}
@@ -31,7 +32,7 @@ if limit<1 or limit>500:raise ValueError("Batch limit must be 1..500")
 stages=("primary3","middle3")
 quotas={stage:limit//len(stages)+(1 if i<limit%len(stages) else 0) for i,stage in enumerate(stages)}
 for stage in stages:
-    offset=rotation*500
+    offset=rotation*quotas[stage]
     examined=0
     missing_source=0
     while len([x for x in selected if x[0]==stage])<quotas[stage]:
