@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {driveToken,requireAdmin} from '../../../../../lib/google-drive-server';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-const allowedFolders=new Set(['16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR','1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn','1foYgnj5csR6hrrRAkI8on6iZkXv3YMe6']);
+const allowedFolders=new Set(['16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR','1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn']);
 export async function GET(req:NextRequest){
  try{
   await requireAdmin(req.headers.get('authorization'));
