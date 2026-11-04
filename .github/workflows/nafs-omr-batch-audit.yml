@@ -60,4 +60,5 @@ jobs:
             reports/nafs-scoring-eligibility.json
             reports/nafs-omr-slot-diagnostics.json
             reports/nafs-provisional-reference-scores.json
+            reports/layout-samples/*.png
           retention-days: 7
