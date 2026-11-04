@@ -6,7 +6,7 @@ import fitz
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-report={"mode":"real_omr_batch_dry_run","pages_rendered":0,"omr_attempted":0,"omr_readable":0,"errors":0,"grades_written":0,"pages":[]}
+report={"mode":"real_omr_batch_dry_run","pages_rendered":0,"omr_attempted":0,"omr_readable":0,"errors":0,"grades_written":0,"pages":[],"layout_samples":[]}
 path=pathlib.Path("reports/nafs-real-omr-sample.json");path.parent.mkdir(exist_ok=True)
 url=os.environ["SUPABASE_URL"].rstrip("/")
 key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
@@ -56,6 +56,7 @@ for stage in stages:
         offset+=len(rows)
     report["stage_selection"][stage]={"selected":len([x for x in selected if x[0]==stage]),"rows_examined":examined,"missing_or_duplicate_source":missing_source}
 cache={}
+sample_counts={"primary3":0,"middle3":0}
 for stage,fid,page,row_id in selected:
     try:
         if fid not in cache:
@@ -93,6 +94,20 @@ for stage,fid,page,row_id in selected:
                     os.unlink(retry_path)
         finally:
             os.unlink(raw_path)
+        # Save only the answer-grid area (no student name, civil ID, QR, or school header)
+        # for visual verification of stage-specific column and question alignment.
+        if report["pages"] and str(report["pages"][-1].get("omr","")).startswith("read") and sample_counts[stage]<2:
+            page_obj=doc[page-1]
+            rect=page_obj.rect
+            clip=fitz.Rect(rect.x0+rect.width*.045,rect.y0+rect.height*.34,
+                           rect.x1-rect.width*.045,rect.y1-rect.height*.045)
+            sample=page_obj.get_pixmap(matrix=fitz.Matrix(1.5,1.5),clip=clip,colorspace=fitz.csGRAY,alpha=False)
+            sample_dir=pathlib.Path("reports/layout-samples")
+            sample_dir.mkdir(parents=True,exist_ok=True)
+            sample_name=f"{stage}-{sample_counts[stage]+1}.png"
+            sample.save(sample_dir/sample_name)
+            report["layout_samples"].append({"stage":stage,"image":sample_name,"content":"answer_grid_only"})
+            sample_counts[stage]+=1
         doc.close()
     except Exception as exc:
         report["errors"]+=1
