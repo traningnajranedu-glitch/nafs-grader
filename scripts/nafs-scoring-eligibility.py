@@ -18,7 +18,10 @@ for p in audit.get("pages",[]):
     if p.get("gender_valid") is not True:reasons.append("missing_or_invalid_gender")
     if p.get("student_name_present") is not True:reasons.append("missing_student_name")
     if p.get("total_matches") is not True:reasons.append("source_total_mismatch")
-    if p.get("layout",{}).get("verified_against_student_sheet") is not True:reasons.append("student_sheet_layout_not_verified")
+    layout=p.get("layout",{})
+    layout_ok=(layout.get("verified_against_student_sheet") is True and layout.get("group_order")=="right_to_left"
+               and layout.get("option_order")=="right_to_left" and layout.get("rows_per_group")==20)
+    if not layout_ok:reasons.append("student_sheet_layout_or_column_order_not_verified")
     stage_key=keys.get("stages",{}).get(stage,{})
     if stage_key.get("layout_verified") is not True:reasons.append("stage_layout_not_approved")
     stage_keys=stage_key.get("subjects",{})
@@ -34,6 +37,8 @@ for p in audit.get("pages",[]):
         if len(key)!=10 or any(x not in CHOICE for x in key):reasons.append(name+":missing_or_invalid_key");continue
         for qnum,(reading,arabic_key) in enumerate(zip(answers[:10],key),start=1):
             state=reading.get("state");choice=reading.get("choice")
+            if reading.get("question")!=qnum:reasons.append(name+":"+str(qnum)+":question_position_mismatch");continue
+            if reading.get("scoreEligible") is not True:reasons.append(name+":"+str(qnum)+":omr_score_eligibility_false");continue
             if state=="uncertain":reasons.append(name+":"+str(qnum)+":uncertain_mark");continue
             if state not in ("clear","multiple","blank"):
                 reasons.append(name+":"+str(qnum)+":unsupported_mark_state");continue
@@ -53,7 +58,7 @@ for p in audit.get("pages",[]):
     stage_stats["needs_review"]+=int(not ready)
     out["candidates"].append({"row_id":p.get("row_id"),"stage":stage,"source_pdf_id":p.get("source_pdf_id"),
        "source_page":p.get("source_page"),"import_id":p.get("import_id"),"source_sha256":p.get("actual_source_sha256"),
-       "approval_ready":ready,"score":score,"total":expected_total if ready else None,
+       "approval_ready":ready,"layout_verified":layout_ok,"question_order_verified":not any(":question_position_mismatch" in r for r in reasons),"score":score,"total":expected_total if ready else None,
        "questions":questions if ready else [],"reasons":reasons})
 dest=pathlib.Path("reports/nafs-scoring-eligibility.json")
 dest.parent.mkdir(exist_ok=True);dest.write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding="utf-8")
