@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/**'
       - 'lib/**'
+      - 'tests/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/nafs-build-validation.yml'
