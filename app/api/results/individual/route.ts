@@ -10,7 +10,7 @@ export async function GET(req:NextRequest){
   const rows=await latestVerifiedRows(stage,undefined,gender||undefined);
   if(mode==='schools'){
    const map=new Map<string,{school:string;students:number;withQuestions:number;gender:string}>();
-   for(const r of rows){const name=(r.school_name||'').replace(/\\.xlsx?$/i,'').trim()||'اسم مدرسة غير متوفر';const key=name+'|'+(r.gender||'غير محدد');const item=map.get(key)||{school:name,students:0,withQuestions:0,gender:r.gender||'غير محدد'};item.students++;if(questionRecords(r).length)item.withQuestions++;map.set(key,item);}
+   for(const r of rows){const name=(r.school_name||'').replace(/\\.xlsx?$/i,'').trim()||'اسم مدرسة غير متوفر';const key=name;const item=map.get(key)||{school:name,students:0,withQuestions:0,gender:r.gender||'غير محدد'};if(item.gender!==(r.gender||'غير محدد'))item.gender='بنين وبنات';item.students++;if(questionRecords(r).length)item.withQuestions++;map.set(key,item);}
    return NextResponse.json({stage,stageLabel:stageLabels[stage],schools:[...map.values()].sort((a,b)=>a.school.localeCompare(b.school,'ar'))},{headers:{'Cache-Control':'private, no-store'}});
   }
   if(mode!=='school'||!school)return NextResponse.json({error:'حدد المدرسة المطلوبة'},{status:400});
