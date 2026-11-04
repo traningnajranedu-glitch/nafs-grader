@@ -33,13 +33,13 @@ jobs:
       - name: Verify scoring policy
         run: node tests/nafs-scoring-policy.test.cjs
       - run: pip install google-api-python-client google-auth pymupdf
-      - name: Read real answer sheets with source-hash verification, never update grades
+      - name: Read real answer sheets with source-hash verification before conditional writes
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
           SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
-          NAFS_BATCH_LIMIT: '100'
-          NAFS_BATCH_ROTATION: '1'
+          NAFS_BATCH_LIMIT: '500'
+          NAFS_BATCH_ROTATION_BASE: '44'
         run: python scripts/nafs-omr-batch-dry-run.py
       - name: Verify per-row scoring eligibility
         if: always()
