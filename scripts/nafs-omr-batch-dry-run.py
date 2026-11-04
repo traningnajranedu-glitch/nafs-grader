@@ -13,7 +13,7 @@ key=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 creds=Credentials.from_service_account_info(json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]),scopes=["https://www.googleapis.com/auth/drive.readonly"])
 drive=build("drive","v3",credentials=creds,cache_discovery=False)
 headers={"apikey":key,"Authorization":"Bearer "+key}
-folders={"primary3":"1cotd9Fm4nvLR9RBqwHSVou6gqgNNcaiC","middle3":"1vMChKpteUA9injYnPcMifpLtCvpIVtjL","primary6":"1VCyxS4iTC2_sXsCT1AM3zJZtvqZXKkO8"}
+folders={"primary3":"1cotd9Fm4nvLR9RBqwHSVou6gqgNNcaiC","middle3":"1vMChKpteUA9injYnPcMifpLtCvpIVtjL"}
 report["drive_sources"]={}
 for stage,folder in folders.items():
     try:
@@ -25,10 +25,11 @@ selected=[]
 run_number=int(os.environ.get("GITHUB_RUN_NUMBER","1"))
 rotation=(run_number-1)%6
 report["rotation"]=rotation
+report["excluded_stages"]=["primary6"]
 report["stage_selection"]={}
 limit=int(os.environ.get("NAFS_BATCH_LIMIT","100"))
 if limit<1 or limit>500:raise ValueError("Batch limit must be 1..500")
-stages=("primary3","middle3","primary6")
+stages=("primary3","middle3")
 quotas={stage:limit//len(stages)+(1 if i<limit%len(stages) else 0) for i,stage in enumerate(stages)}
 for stage in stages:
     offset=rotation*500
