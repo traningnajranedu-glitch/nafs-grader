@@ -4,7 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {supabase} from '../../../lib/supabase';
 type FileItem={id:string;name:string;url:string};
 type Stage={stage:string;files:FileItem[]};
-const labels:Record<string,string>={primary3:'ثالث ابتدائي',primary6:'سادس ابتدائي',middle3:'ثالث متوسط'};
+const labels:Record<string,string>={primary3:'ثالث ابتدائي',middle3:'ثالث متوسط'};
 const normalize=(s:string)=>s.trim().replace(/\s+/g,' ').replace(/[أإآ]/g,'ا');
 const genderOf=(name:string)=>/بنات|بنت|اناث|إناث/.test(normalize(name))?'girls':/بنين|ذكور/.test(normalize(name))?'boys':'unknown';
 const schoolOf=(name:string)=>name.replace(/\.xlsx?$/i,'').replace(/[-_ ]*(نتائج|نتيجة|درجات|طلاب|الطلاب)[-_ ]*/g,' ').trim();
