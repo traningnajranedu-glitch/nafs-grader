@@ -8,7 +8,7 @@ type Question={stage:string;subject:string;number:number;responses:number;correc
 type Subject={stage:string;subject:string;responses:number;correct:number;percent:number};
 type Skill={stage:string;subject:string;skill_code:string;skill_name:string;responses:number;percent:number};
 type Analytics={schools:School[];questions:Question[];subjects:Subject[];skills:Skill[];genders:{gender:string;students:number;percent:number}[];options:{schools:string[];skills:{code:string;name:string}[]};summary:{students:number;verified:number;excluded:number;missing:number;included:number;percent:number|null;coverage:number|null;invalidVerified:number;unmappedQuestions:number};stages:{stage:string;students:number;verified:number;missing:number}[];checkedAt:string;skillMapCount:number;thresholdNote:string};
-const stageName=(s:string)=>({primary3:'ثالث ابتدائي',middle3:'ثالث متوسط'}[s]||s);
+const stageName=(s:string)=>({primary3:'ثالث ابتدائي',primary6:'سادس ابتدائي',middle3:'ثالث متوسط'}[s]||s);
 const subjectName=(s:string)=>({arabic:'لغتي',math:'الرياضيات',science:'العلوم'}[s]||s);
 
 function LuminousBrand(){
@@ -36,7 +36,7 @@ function ResultsContent(){
  const n=(v:number)=>f(Number(v).toLocaleString('en-US'));
  const pct=(v:number|null)=>v===null?'—':f(Number(v).toFixed(1)+'%');
  const [data,setData]=useState<Analytics|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[tick,setTick]=useState(0);
- const [statusCounts,setStatusCounts]=useState<{verified:number;pending:number;total:number}|null>(null);
+ const [statusCounts,setStatusCounts]=useState<{verified:number;pending:number;other:number;total:number;byStage:{stage:string;verified:number;pending:number;other:number;total:number}[]}|null>(null);
  useEffect(()=>{let active=true;fetch('/api/results/status-summary',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('status');return r.json()}).then(body=>{if(active)setStatusCounts(body)}).catch(()=>{if(active)setStatusCounts(null)});return()=>{active=false}},[tick]);
  const [stage,setStage]=useState(''),[gender,setGender]=useState(''),[school,setSchool]=useState(''),[subject,setSubject]=useState(''),[skill,setSkill]=useState(''),[tab,setTab]=useState('schools');
  useEffect(()=>{let active=true;const controller=new AbortController();setLoading(true);setError('');
@@ -48,9 +48,9 @@ function ResultsContent(){
  add('الأسئلة',data.questions.map(q=>({'المرحلة':stageName(q.stage),'المادة':subjectName(q.subject),'السؤال':q.number,'الإجابات':q.responses,'الصحيح':q.correct,'النسبة %':q.percent,'الصعوبة التحليلية':q.difficulty})));
  add('المهارات',data.skills.length?data.skills.map(s=>({'المرحلة':stageName(s.stage),'المادة':subjectName(s.subject),'المهارة':s.skill_name,'الرمز':s.skill_code,'الإجابات':s.responses,'النسبة %':s.percent})):[{'الحالة':'لا توجد مهارات مرتبطة بمفتاح مطابق؛ يلزم ربط معتمد'}]);XLSX.writeFile(wb,'nafs-verified-results.xlsx');}
  const ranked=(data?.schools||[]).filter(s=>s.average!==null).sort((a,b)=>Number(b.average)-Number(a.average));
- return <main dir="rtl" className="results"><header className="results-hero"><LuminousBrand/><div className="results-heading"><div><span className="eyebrow">الإدارة العامة للتعليم بمنطقة نجران</span><h1>المؤشرات والتقارير</h1><p>الإتقان والمهارات • الثالث الابتدائي والثالث المتوسط • {f(2026)}</p></div><a href="/results/download">بوابة نتائج نافس ←</a></div></header>
+ return <main dir="rtl" className="results"><header className="results-hero"><LuminousBrand/><div className="results-heading"><div><span className="eyebrow">الإدارة العامة للتعليم بمنطقة نجران</span><h1>المؤشرات والتقارير</h1><p>الإتقان والمهارات • الثالث الابتدائي والسادس الابتدائي والثالث المتوسط • {f(2026)}</p></div><a href="/results/download">بوابة نتائج نافس ←</a></div></header>
  <section className="filters no-print" aria-label="تصفية النتائج">
- <label>المرحلة<select value={stage} onChange={e=>{setStage(e.target.value);setSchool('');setSubject('');setSkill('')}}><option value="">جميع المراحل</option><option value="primary3">ثالث ابتدائي</option><option value="middle3">ثالث متوسط</option></select></label>
+ <label>المرحلة<select value={stage} onChange={e=>{setStage(e.target.value);setSchool('');setSubject('');setSkill('')}}><option value="">جميع المراحل</option><option value="primary3">ثالث ابتدائي</option><option value="primary6">سادس ابتدائي</option><option value="middle3">ثالث متوسط</option></select></label>
  <label>الجنس<select value={gender} onChange={e=>{setGender(e.target.value);setSchool('');setSkill('')}}><option value="">بنين وبنات</option><option>بنين</option><option>بنات</option></select></label>
  <label>المدرسة<select value={school} onChange={e=>setSchool(e.target.value)}><option value="">جميع المدارس</option>{school&&!data?.options.schools.includes(school)&&<option value={school}>{f(school)}</option>}{data?.options.schools.map(s=><option key={s} value={s}>{f(s)}</option>)}</select></label>
  <label>المادة<select value={subject} onChange={e=>{setSubject(e.target.value);setSkill('')}}><option value="">جميع المواد</option><option value="arabic">لغتي</option><option value="math">الرياضيات</option>{stage!=='primary3'&&<option value="science">العلوم</option>}</select></label>
@@ -62,7 +62,7 @@ function ResultsContent(){
  <div style={{flex:'1 1 180px'}}><small>سجلات بحالة verified في الاستيراد</small><h2>{n(statusCounts.verified)}</h2></div>
  <div style={{flex:'1 1 180px'}}><small>سجلات معلقة للمراجعة</small><h2>{n(statusCounts.pending)}</h2></div>
  <div style={{flex:'1 1 180px'}}><small>إجمالي السجلات</small><h2>{n(statusCounts.total)}</h2></div>
- <p style={{width:'100%',margin:0,fontSize:12}}>هذه حالات الاستيراد الخام وليست اعتمادًا رسميًا؛ مؤشرات الإتقان أدناه تُحسب فقط من السجلات التي اجتازت التحقق التفصيلي.</p>
+ <div style={{width:'100%',display:'flex',flexWrap:'wrap',gap:12}}>{statusCounts.byStage.map(s=><small key={s.stage}>{stageName(s.stage)}: {n(s.verified)} متحقق الحالة، {n(s.pending)} معلق، {n(s.total)} إجمالي</small>)}</div><p style={{width:'100%',margin:0,fontSize:12}}>الحالات محسوبة من أحدث استيراد لكل ملف Drive فقط، وتشمل المراحل الثلاث. حالة verified في الاستيراد لا تعني اعتمادًا رسميًا؛ مؤشرات الإتقان أدناه تتطلب تحققًا تفصيليًا مستقلًا.</p>
  </section>}
  {data&&!error&&<div className={loading?'chart-stale':''} aria-busy={loading} inert={loading}><div className="kpis">{[['أوراق الإجابة',n(data.summary.students)],['اجتازت التحقق الآلي',n(data.summary.verified)],['مستبعدة من الحساب',n(data.summary.excluded)],['بلا درجة',n(data.summary.missing)],['تغطية الاعتماد',pct(data.summary.coverage)],['نسبة الإجابات الصحيحة',pct(data.summary.percent)]].map(([label,value])=><article key={label}><span>{label}</span><strong>{value}</strong></article>)}</div>
  <section className="notice"><b>المؤشرات من السجلات التي اجتازت التحقق التفصيلي فقط؛ وهذا لا يعني اعتمادًا رسميًا.</b> يُفحص اكتمال الإجابات، مطابقة المفتاح المعتمد، مجموع درجات الأسئلة، ومرجع PDF. تُستخدم أحدث نسخة لكل ملف. {data.summary.invalidVerified>0&&<strong>استُبعد {n(data.summary.invalidVerified)} سجلًا بحالة verified لفشله في فحص الاتساق.</strong>}<p>{f(data.thresholdNote)}</p><small>آخر قراءة: {new Date(data.checkedAt).toLocaleString('ar-SA',{numberingSystem:mode})} • المكتمل في هذه الشاشة لا يعني اكتمال جميع الأوراق.</small></section>
