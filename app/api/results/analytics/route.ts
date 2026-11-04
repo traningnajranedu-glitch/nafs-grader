@@ -7,8 +7,8 @@ export async function GET(req:NextRequest){
  try{
   const p=req.nextUrl.searchParams;
   const stage=p.get('stage'),gender=p.get('gender'),subject=p.get('subject');
-  if(stage&&!['primary3','middle3'].includes(stage)||gender&&!['بنين','بنات'].includes(gender)||subject&&!['arabic','math','science'].includes(subject))return NextResponse.json({error:'قيمة فلتر غير صالحة'},{status:400});
-  const stages=stage?[stage]:['primary3','middle3'];
+  if(stage&&!['primary3','primary6','middle3'].includes(stage)||gender&&!['بنين','بنات'].includes(gender)||subject&&!['arabic','math','science'].includes(subject))return NextResponse.json({error:'قيمة فلتر غير صالحة'},{status:400});
+  const stages=stage?[stage]:['primary3','primary6','middle3'];
   const db=serviceDb();
   const parts:AnalyticsPart[]=await Promise.all(stages.map(async selectedStage=>{
    const {data,error}=await db.rpc('nafs_verified_analytics',{p_stage:selectedStage,p_gender:gender||null,p_school:p.get('school')||null,p_subject:subject||null,p_skill:p.get('skill')||null});
@@ -38,7 +38,7 @@ export async function GET(req:NextRequest){
     coverage:students?100*verified/students:null,invalidVerified:sum(parts,'invalidVerified'),unmappedQuestions:sum(parts,'unmappedQuestions')},
    stages:parts.flatMap(x=>x.stages||[]),checkedAt:new Date().toISOString(),
    skillMapCount:skillMap.size,thresholdNote:parts[0]?.thresholdNote||'',
-   source:'latest Excel versions / verified source evidence — third primary and third intermediate only'
+   source:'latest Excel versions / verified source evidence — third primary, sixth primary and third intermediate'
   };
   return NextResponse.json(data,{headers:{'Cache-Control':'private, no-store'}});
  }catch(e){console.error('NAFS verified analytics error',e);return NextResponse.json({error:'تعذر تحميل مؤشرات النتائج المتحقق منها'},{status:500})}
