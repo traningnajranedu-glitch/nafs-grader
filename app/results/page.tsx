@@ -8,7 +8,7 @@ type Question={stage:string;subject:string;number:number;responses:number;correc
 type Subject={stage:string;subject:string;responses:number;correct:number;percent:number};
 type Skill={stage:string;subject:string;skill_code:string;skill_name:string;responses:number;percent:number};
 type Analytics={schools:School[];questions:Question[];subjects:Subject[];skills:Skill[];genders:{gender:string;students:number;percent:number}[];options:{schools:string[];skills:{code:string;name:string}[]};summary:{students:number;verified:number;excluded:number;missing:number;included:number;percent:number|null;coverage:number|null;invalidVerified:number;unmappedQuestions:number};stages:{stage:string;students:number;verified:number;missing:number}[];checkedAt:string;skillMapCount:number;thresholdNote:string};
-const stageName=(s:string)=>({primary3:'ثالث ابتدائي',primary6:'سادس ابتدائي',middle3:'ثالث متوسط'}[s]||s);
+const stageName=(s:string)=>({primary3:'ثالث ابتدائي',middle3:'ثالث متوسط'}[s]||s);
 const subjectName=(s:string)=>({arabic:'لغتي',math:'الرياضيات',science:'العلوم'}[s]||s);
 
 function LuminousBrand(){
@@ -48,9 +48,9 @@ function ResultsContent(){
  add('الأسئلة',data.questions.map(q=>({'المرحلة':stageName(q.stage),'المادة':subjectName(q.subject),'السؤال':q.number,'الإجابات':q.responses,'الصحيح':q.correct,'النسبة %':q.percent,'الصعوبة التحليلية':q.difficulty})));
  add('المهارات',data.skills.length?data.skills.map(s=>({'المرحلة':stageName(s.stage),'المادة':subjectName(s.subject),'المهارة':s.skill_name,'الرمز':s.skill_code,'الإجابات':s.responses,'النسبة %':s.percent})):[{'الحالة':'لا توجد مهارات مرتبطة بمفتاح مطابق؛ يلزم ربط معتمد'}]);XLSX.writeFile(wb,'nafs-verified-results.xlsx');}
  const ranked=(data?.schools||[]).filter(s=>s.average!==null).sort((a,b)=>Number(b.average)-Number(a.average));
- return <main dir="rtl" className="results"><header className="results-hero"><LuminousBrand/><div className="results-heading"><div><span className="eyebrow">الإدارة العامة للتعليم بمنطقة نجران</span><h1>المؤشرات والتقارير</h1><p>الإتقان والمهارات • الثالث والسادس الابتدائي والثالث المتوسط • {f(2026)}</p></div><a href="/results/download">بوابة نتائج نافس ←</a></div></header>
+ return <main dir="rtl" className="results"><header className="results-hero"><LuminousBrand/><div className="results-heading"><div><span className="eyebrow">الإدارة العامة للتعليم بمنطقة نجران</span><h1>المؤشرات والتقارير</h1><p>الإتقان والمهارات • الثالث الابتدائي والثالث المتوسط • {f(2026)}</p></div><a href="/results/download">بوابة نتائج نافس ←</a></div></header>
  <section className="filters no-print" aria-label="تصفية النتائج">
- <label>المرحلة<select value={stage} onChange={e=>{setStage(e.target.value);setSchool('');setSubject('');setSkill('')}}><option value="">جميع المراحل</option><option value="primary3">ثالث ابتدائي</option><option value="primary6">سادس ابتدائي</option><option value="middle3">ثالث متوسط</option></select></label>
+ <label>المرحلة<select value={stage} onChange={e=>{setStage(e.target.value);setSchool('');setSubject('');setSkill('')}}><option value="">جميع المراحل</option><option value="primary3">ثالث ابتدائي</option><option value="middle3">ثالث متوسط</option></select></label>
  <label>الجنس<select value={gender} onChange={e=>{setGender(e.target.value);setSchool('');setSkill('')}}><option value="">بنين وبنات</option><option>بنين</option><option>بنات</option></select></label>
  <label>المدرسة<select value={school} onChange={e=>setSchool(e.target.value)}><option value="">جميع المدارس</option>{school&&!data?.options.schools.includes(school)&&<option value={school}>{f(school)}</option>}{data?.options.schools.map(s=><option key={s} value={s}>{f(s)}</option>)}</select></label>
  <label>المادة<select value={subject} onChange={e=>{setSubject(e.target.value);setSkill('')}}><option value="">جميع المواد</option><option value="arabic">لغتي</option><option value="math">الرياضيات</option>{stage!=='primary3'&&<option value="science">العلوم</option>}</select></label>
