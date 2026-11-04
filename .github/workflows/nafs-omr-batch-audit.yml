@@ -32,12 +32,13 @@ jobs:
       - name: Verify scoring policy
         run: node tests/nafs-scoring-policy.test.cjs
       - run: pip install google-api-python-client google-auth pymupdf
-      - name: Read real answer sheets with existing OMR, never update grades
+      - name: Read real answer sheets with source-hash verification, never update grades
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.NAFS_GOOGLE_SERVICE_ACCOUNT_JSON }}
           SUPABASE_URL: ${{ secrets.NAFS_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NAFS_SUPABASE_SERVICE_ROLE_KEY }}
           NAFS_BATCH_LIMIT: '100'
+          NAFS_BATCH_ROTATION: '1'
         run: python scripts/nafs-omr-batch-dry-run.py
       - name: Verify per-row scoring eligibility
         if: always()
@@ -47,7 +48,7 @@ jobs:
         if: always()
         run: |
           if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-omr-slot-diagnostics.py; fi
-      - name: Calculate provisional reference comparisons
+      - name: Build per-question verified score candidates
         if: always()
         run: |
           if [ -f reports/nafs-real-omr-sample.json ]; then python scripts/nafs-provisional-reference-score.py; fi
@@ -60,5 +61,4 @@ jobs:
             reports/nafs-scoring-eligibility.json
             reports/nafs-omr-slot-diagnostics.json
             reports/nafs-provisional-reference-scores.json
-            reports/layout-samples/*.png
           retention-days: 7
