@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {driveToken,requireAdmin} from '../../../../lib/google-drive-server';
+import catalog from '../../../../data/nafs-school-result-files-20261029.json';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const FOLDERS=[{stage:'primary3',id:'16hQnpG5q1sBlO03Qj3X0MkNogwSQ-fXR'},{stage:'middle3',id:'1vT8Ms0smuINSgn6KXuCJhEZma5VRvdbn'}] as const;
@@ -24,6 +25,8 @@ export async function GET(req:NextRequest){
    const excel=files.filter(f=>/\.xlsx?$/i.test(f.name)||f.mimeType==='application/vnd.google-apps.spreadsheet');
    return {stage:folder.stage,folderItems:files.length,folderAccessible:true,folderName:folderInfo.name||null,sampleTypes:[...new Set(files.map(f=>f.mimeType))].slice(0,5),emptyReason:files.length===0?'المجلد متاح للاتصال الحالي ولكن واجهة Google Drive أعادت صفر عنصر؛ تحقق من هوية الحساب المرتبط أو بنية المجلد.':excel.length===0?'عناصر موجودة ولكن لا توجد ملفات نتائج Excel مطابقة.':null,folderUrl:'https://drive.google.com/drive/folders/'+folder.id,count:excel.length,lastModified:excel.map(f=>f.modifiedTime||'').sort().at(-1)||null,files:excel.map(f=>({id:f.id,name:f.name,modifiedTime:f.modifiedTime||null,url:f.webViewLink||'https://drive.google.com/file/d/'+f.id+'/view'}))};
   }));
-  return NextResponse.json({stages,checkedAt:new Date().toISOString(),source:'Google Drive file metadata; not verified sheet scores'},{headers:{'Cache-Control':'no-store'}});
+  const sixthFiles=catalog.files.filter(f=>f.stage==='primary6'&&(/\.xlsx?$/i.test(f.name)||f.mime==='application/vnd.google-apps.spreadsheet'));
+  stages.push({stage:'primary6',folderItems:sixthFiles.length,folderAccessible:true,folderName:'سادس ابتدائي - فهرس ملفات Google Drive',sampleTypes:['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],emptyReason:sixthFiles.length?'مصدر القائمة فهرس Google Drive المحفوظ بتاريخ '+catalog.updated:'لا توجد ملفات سادس ابتدائي في فهرس الملفات',folderUrl:'',count:sixthFiles.length,lastModified:catalog.updated,files:sixthFiles.map(f=>({id:f.id,name:f.name,modifiedTime:catalog.updated,url:f.url||'https://drive.google.com/file/d/'+f.id+'/view'}))});
+  return NextResponse.json({stages,checkedAt:new Date().toISOString(),source:'Google Drive live listing for primary3/middle3; saved Google Drive catalog for primary6 dated '+catalog.updated},{headers:{'Cache-Control':'no-store'}});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'تعذر مزامنة قائمة النتائج'},{status:403})}
 }
