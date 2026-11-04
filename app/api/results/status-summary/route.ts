@@ -32,12 +32,12 @@ export async function GET(){
   const importStage=new Map(latest.map(item=>[item.id,item.stage]));
 
   for(let offset=0;;offset+=PAGE_SIZE){
-   const ids=latest.slice(0); // keep the exact latest-import set for every page
-   if(!ids.length)break;
-   const pageIds=ids.map(x=>x.id);
+   if(!latest.length)break;
+   const pageIds=latest.map(x=>x.id);
    const {data,error}=await db.from('nafs_result_import_rows')
-    .select('import_id,status')
+    .select('id,import_id,status')
     .in('import_id',pageIds)
+    .order('id',{ascending:true})
     .range(offset,offset+PAGE_SIZE-1);
    if(error)throw error;
    const rows=data||[];
