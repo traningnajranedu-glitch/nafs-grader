@@ -61,7 +61,7 @@ function ResultsContent(){
  {statusCounts&&<section aria-label="حالة نتائج نافس في قاعدة البيانات" style={{display:'flex',flexWrap:'wrap',gap:12,margin:'16px 0',padding:16,border:'1px solid #c5b27a',borderRadius:16}}>
  <div style={{flex:'1 1 180px'}}><small>سجلات بحالة verified في الاستيراد</small><h2>{n(statusCounts.verified)}</h2></div>
  <div style={{flex:'1 1 180px'}}><small>سجلات معلقة للمراجعة</small><h2>{n(statusCounts.pending)}</h2></div>
- <div style={{flex:'1 1 180px'}}><small>إجمالي السجلات</small><h2>{n(statusCounts.total)}</h2></div>
+ <div style={{flex:'1 1 180px'}}><small>حالات أخرى</small><h2>{n(statusCounts.other)}</h2></div><div style={{flex:'1 1 180px'}}><small>إجمالي السجلات</small><h2>{n(statusCounts.total)}</h2></div>
  <div style={{width:'100%',display:'flex',flexWrap:'wrap',gap:12}}>{statusCounts.byStage.map(s=><small key={s.stage}>{stageName(s.stage)}: {n(s.verified)} متحقق الحالة، {n(s.pending)} معلق، {n(s.total)} إجمالي</small>)}</div><p style={{width:'100%',margin:0,fontSize:12}}>الحالات محسوبة من أحدث استيراد لكل ملف Drive فقط، وتشمل المراحل الثلاث. حالة verified في الاستيراد لا تعني اعتمادًا رسميًا؛ مؤشرات الإتقان أدناه تتطلب تحققًا تفصيليًا مستقلًا.</p>
  </section>}
  {data&&!error&&<div className={loading?'chart-stale':''} aria-busy={loading} inert={loading}><div className="kpis">{[['أوراق الإجابة',n(data.summary.students)],['اجتازت التحقق الآلي',n(data.summary.verified)],['مستبعدة من الحساب',n(data.summary.excluded)],['بلا درجة',n(data.summary.missing)],['تغطية الاعتماد',pct(data.summary.coverage)],['نسبة الإجابات الصحيحة',pct(data.summary.percent)]].map(([label,value])=><article key={label}><span>{label}</span><strong>{value}</strong></article>)}</div>
