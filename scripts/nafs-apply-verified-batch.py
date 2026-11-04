@@ -50,6 +50,8 @@ for candidate in elig.get("candidates",[]):
     if stage not in ("primary3","middle3"):skip("stage_out_of_scope");continue
     expected=20 if stage=="primary3" else 30
     qs=candidate.get("questions") or []
+    if candidate.get("layout_verified") is not True or candidate.get("question_order_verified") is not True:
+        skip("layout_or_question_order_not_verified");continue
     if candidate.get("total")!=expected or len(qs)!=expected:skip("question_count_mismatch");continue
     score=sum(int(q.get("awarded",-1)) for q in qs)
     if score!=candidate.get("score"):skip("score_sum_mismatch");continue
