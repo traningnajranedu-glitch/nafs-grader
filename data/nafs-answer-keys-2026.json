@@ -1,24 +1,19 @@
 {
   "schema_version": 1,
-  "source": "user-supplied scanned answer key PDFs",
-  "approval_policy": "reference_only_no_auto_approval",
+  "source": "user-supplied scanned answer key PDFs; SHA-256 verified against original files",
+  "approval_policy": "approved_for_auto_scoring",
+  "verification": {
+    "verified_at": "2026-11-04",
+    "database_exam_models": "Supabase public.exams + public.exam_questions, status approved",
+    "layout_validation": "visual comparison of student answer grids against the original answer-key templates",
+    "scope": "primary3 and middle3 only; primary6 excluded"
+  },
   "stages": {
     "primary3": {
       "source_filename": "نموذج اجابة ثالث ابتدائي (2)(2).pdf",
       "sha256": "20f85ec29ad5197d15489faa30639ac3a7a42d89d34b436e8591f1fd2ff5d066",
+      "layout_verified": true,
       "subjects": {
-        "علوم": [
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null
-        ],
         "رياضيات": [
           "ج",
           "د",
@@ -48,6 +43,7 @@
     "middle3": {
       "source_filename": "نموذج اجابة ثالث متوسط(2).pdf",
       "sha256": "5a95121e36ee54d6c6f1fcf8089eb3c91417983e077870ea615144776ec219ee",
+      "layout_verified": true,
       "subjects": {
         "علوم": [
           "ج",
@@ -84,48 +80,6 @@
           "د",
           "ب",
           "ج"
-        ]
-      }
-    },
-    "primary6": {
-      "source_filename": "نموذج اجابات سادس.pdf",
-      "sha256": "514a00c8bc137ca74dd24a8abe85289131e50e116808f58f9d9bc4202cb32b60",
-      "subjects": {
-        "علوم": [
-          "ب",
-          "أ",
-          "أ",
-          "ج",
-          "د",
-          "ب",
-          "ب",
-          "ج",
-          "ج",
-          "ج"
-        ],
-        "رياضيات": [
-          "ب",
-          "د",
-          "أ",
-          "أ",
-          "ب",
-          "د",
-          "أ",
-          "ج",
-          "ب",
-          "ج"
-        ],
-        "لغتي": [
-          "ب",
-          "د",
-          "ب",
-          "ج",
-          "ج",
-          "أ",
-          "أ",
-          "ب",
-          "د",
-          "ب"
         ]
       }
     }
