@@ -37,7 +37,7 @@ function ResultsContent(){
  const n=(v:number)=>f(Number(v).toLocaleString('en-US'));
  const pct=(v:number|null)=>v===null?'—':f(Number(v).toFixed(1)+'%');
  const [data,setData]=useState<Analytics|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[tick,setTick]=useState(0);
- const [statusCounts,setStatusCounts]=useState<{verified:number;pending:number;other:number;total:number;checkedAt?:string;byStage:{stage:string;verified:number;pending:number;other:number;total:number}[]}|null>(null);
+ const [statusCounts,setStatusCounts]=useState<{verified:number;pending:number;other:number;total:number;boys:number;girls:number;genderMissing:number;checkedAt?:string;byStage:{stage:string;verified:number;pending:number;other:number;total:number;boys:number;girls:number;genderMissing:number}[]}|null>(null);
  useEffect(()=>{let active=true;fetch('/api/results/status-summary',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('status');return r.json()}).then(body=>{if(active)setStatusCounts(body)}).catch(()=>{if(active)setStatusCounts(null)});return()=>{active=false}},[tick]);
  const [stage,setStage]=useState(''),[gender,setGender]=useState(''),[school,setSchool]=useState(''),[subject,setSubject]=useState(''),[skill,setSkill]=useState(''),[tab,setTab]=useState('schools');
  useEffect(()=>{let active=true;const controller=new AbortController();setLoading(true);setError('');
@@ -66,6 +66,16 @@ function ResultsContent(){
  <div style={{width:'100%',display:'flex',flexWrap:'wrap',gap:12}}>{statusCounts.byStage.map(s=><small key={s.stage}>{stageName(s.stage)}: {n(s.verified)} متحقق آليًا، {n(s.pending)} معلق، {n(s.total)} إجمالي</small>)}</div>
  <p style={{width:'100%',margin:0,fontSize:12}}>الحساب يعتمد أحدث استيراد لكل ملف Google Drive لتجنب تكرار احتساب النسخ القديمة. «متحقق آليًا» وصف لحالة السجل في الاستيراد، وليس اعتمادًا نهائيًا لصحة الدرجة أو النشر.</p>
  {statusCounts.checkedAt&&<small style={{width:'100%'}}>آخر تحديث لحالة الاستيراد: {new Date(statusCounts.checkedAt).toLocaleString('ar-SA',{numberingSystem:mode})}</small>}
+ </section>}
+ {statusCounts&&<section aria-label="توزيع الجنس حسب المرحلة من أحدث ملفات المدارس" style={{margin:'16px 0',padding:18,border:'1px solid #4a9c9b',borderRadius:16,background:'linear-gradient(120deg,#073d58,#07576a)'}}>
+ <h2 style={{margin:'0 0 14px',color:'#f7d38b'}}>تحديث تصنيف الجنس في السجلات</h2>
+ <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(145px,1fr))',gap:12}}>
+  <div><small>بنين</small><h2>{n(statusCounts.boys)}</h2></div>
+  <div><small>بنات</small><h2>{n(statusCounts.girls)}</h2></div>
+  <div><small>غير محدد</small><h2>{n(statusCounts.genderMissing)}</h2></div>
+ </div>
+ <div className="table"><table><thead><tr>{['المرحلة','بنين','بنات','غير محدد','الإجمالي'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{statusCounts.byStage.map(s=><tr key={s.stage}><td>{stageName(s.stage)}</td><td>{n(s.boys)}</td><td>{n(s.girls)}</td><td>{n(s.genderMissing)}</td><td>{n(s.total)}</td></tr>)}</tbody></table></div>
+ <p style={{margin:'12px 0 0',fontSize:12}}>تعكس الأعداد تصنيفات الجنس المسجلة في أحدث استيراد لكل ملف، وتشمل جميع السجلات بصرف النظر عن حالة التحقق من الدرجة.</p>
  </section>}
  {data&&!error&&<div className={loading?'chart-stale':''} aria-busy={loading} inert={loading}><div className="kpis">{[['أوراق الإجابة',n(data.summary.students)],['اجتازت التحقق الآلي',n(data.summary.verified)],['مستبعدة من الحساب',n(data.summary.excluded)],['بلا درجة',n(data.summary.missing)],['تغطية الاعتماد',pct(data.summary.coverage)],['نسبة الإجابات الصحيحة',pct(data.summary.percent)]].map(([label,value])=><article key={label}><span>{label}</span><strong>{value}</strong></article>)}</div>
  <section className="notice"><b>المؤشرات من السجلات التي اجتازت التحقق التفصيلي فقط؛ وهذا لا يعني اعتمادًا رسميًا.</b> يُفحص اكتمال الإجابات، مطابقة المفتاح المعتمد، مجموع درجات الأسئلة، ومرجع PDF. تُستخدم أحدث نسخة لكل ملف. {data.summary.invalidVerified>0&&<strong>استُبعد {n(data.summary.invalidVerified)} سجلًا بحالة verified لفشله في فحص الاتساق.</strong>}<p>{f(data.thresholdNote)}</p><small>آخر قراءة: {new Date(data.checkedAt).toLocaleString('ar-SA',{numberingSystem:mode})} • المكتمل في هذه الشاشة لا يعني اكتمال جميع الأوراق.</small></section>
