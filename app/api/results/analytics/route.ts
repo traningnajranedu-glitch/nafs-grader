@@ -10,12 +10,15 @@ export async function GET(req:NextRequest){
   if(stage&&!['primary3','primary6','middle3'].includes(stage)||gender&&!['بنين','بنات'].includes(gender)||subject&&!['arabic','math','science'].includes(subject))return NextResponse.json({error:'قيمة فلتر غير صالحة'},{status:400});
   const stages=stage?[stage]:['primary3','primary6','middle3'];
   const db=serviceDb();
-  const parts:AnalyticsPart[]=await Promise.all(stages.map(async selectedStage=>{
+  // Run the heavy per-stage analytics RPCs sequentially to avoid saturating
+  // the database with three concurrent JSONB validation scans on the all-stages view.
+  const parts:AnalyticsPart[]=[];
+  for(const selectedStage of stages){
    const {data,error}=await db.rpc('nafs_verified_analytics',{p_stage:selectedStage,p_gender:gender||null,p_school:p.get('school')||null,p_subject:subject||null,p_skill:p.get('skill')||null});
    if(error)throw error;
    if(!data||!data.summary)throw Error('Analytics unavailable');
-   return data as AnalyticsPart;
-  }));
+   parts.push(data as AnalyticsPart);
+  }
   const schools=parts.flatMap(x=>x.schools||[]);
   const questions=parts.flatMap(x=>x.questions||[]);
   const subjects=parts.flatMap(x=>x.subjects||[]);
