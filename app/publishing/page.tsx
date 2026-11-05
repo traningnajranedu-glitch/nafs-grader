@@ -69,10 +69,12 @@ export default function PublishingCenter(){
 
   useEffect(()=>{void verify();},[verify]);
 
-  const loadPreview=async(id:string)=>{
+  const loadPreview=async(id:string,gender=selectedGender)=>{
     setSelectedImport(id);setPreview(null);setNotice('');
     if(!supabase||!id)return;
-    const {data,error}=await supabase.from('nafs_result_import_rows').select('status,student_name,score,total,answers').eq('import_id',id).limit(2000);
+    let query=supabase.from('nafs_result_import_rows').select('status,student_name,score,total,answers').eq('import_id',id);
+    if(gender)query=query.eq('gender',gender);
+    const {data,error}=await query.limit(2000);
     if(error){setNotice('تعذر قراءة ملخص المصدر: '+error.message);return;}
     const rows=data||[];
     setPreview({eligible:rows.filter(eligible).length,excluded:rows.filter(r=>!eligible(r)).length});
@@ -147,7 +149,7 @@ export default function PublishingCenter(){
           {imports.map(i=><option key={i.id} value={i.id}>{stageNames[i.stage]||i.stage} · {i.school_name} · {new Date(i.imported_at).toLocaleDateString('ar-SA')}</option>)}
         </select>
         <label style={{display:'block',fontWeight:700,margin:'12px 0 6px'}}>نطاق الجنس (اختياري)</label>
-        <select value={selectedGender} onChange={e=>setSelectedGender(e.target.value)} style={{...input,maxWidth:260}}>
+        <select value={selectedGender} onChange={e=>{setSelectedGender(e.target.value);if(selectedImport)void loadPreview(selectedImport,e.target.value);}} style={{...input,maxWidth:260}}>
           <option value="">جميع الجنسين حسب بيانات المصدر</option><option value="بنين">بنين</option><option value="بنات">بنات</option>
         </select>
         {preview&&<div style={{display:'flex',gap:10,flexWrap:'wrap',margin:'14px 0'}}>
