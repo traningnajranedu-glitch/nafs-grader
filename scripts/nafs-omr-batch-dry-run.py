@@ -32,32 +32,46 @@ if limit<1 or limit>500:raise ValueError("Batch limit must be 1..500")
 stages=("primary3","middle3")
 quotas={stage:limit//len(stages)+(1 if i<limit%len(stages) else 0) for i,stage in enumerate(stages)}
 for stage in stages:
-    offset=rotation*quotas[stage]
+    # Filter at PostgREST instead of scanning every pending row with large OFFSETs.
+    # Keyset pagination keeps each request bounded as the queue grows.
     examined=0
     missing_source=0
+    after_id=None
     while len([x for x in selected if x[0]==stage])<quotas[stage]:
-        params=urllib.parse.urlencode({"select":"id,import_id,answers,student_name,gender,total","status":"eq.pending_review","stage":"eq."+stage,"order":"id.asc","limit":"500","offset":str(offset)})
-        with urllib.request.urlopen(urllib.request.Request(url+"/rest/v1/nafs_result_import_rows?"+params,headers=headers),timeout=45) as response:rows=json.load(response)
+        query={"select":"id,import_id,answers,student_name,gender,total",
+               "status":"eq.pending_review","stage":"eq."+stage,
+               "answers->>sourcePdfId":"not.is.null",
+               "answers->>sourceSha256":"not.is.null",
+               "answers->>sourcePage":"not.is.null",
+               "order":"id.asc","limit":"250"}
+        if after_id:
+            query["id"]="gt."+after_id
+        params=urllib.parse.urlencode(query)
+        request=urllib.request.Request(url+"/rest/v1/nafs_result_import_rows?"+params,headers=headers)
+        with urllib.request.urlopen(request,timeout=90) as response:
+            rows=json.load(response)
         if not rows:
-            if offset>0 and examined==0:
-                offset=0
-                continue
             break
+        after_id=rows[-1]["id"]
         for row in rows:
             examined+=1
             answers=row.get("answers") or {}
-            if not isinstance(answers,dict):continue
+            if not isinstance(answers,dict):
+                missing_source+=1
+                continue
             fid=answers.get("sourcePdfId")
             try:page=int(answers.get("sourcePage"))
             except (TypeError,ValueError):page=0
             expected_sha=answers.get("sourceSha256")
-            if isinstance(fid,str) and fid and page>0 and not any(x[:3]==(stage,fid,page) for x in selected):
+            if isinstance(fid,str) and fid and page>0 and isinstance(expected_sha,str) and len(expected_sha)==64 and not any(x[:3]==(stage,fid,page) for x in selected):
                 selected.append((stage,fid,page,row["id"],row.get("import_id"),expected_sha,row.get("gender"),
                                  row.get("total"),bool((row.get("student_name") or "").strip())))
             else:
                 missing_source+=1
-            if len([x for x in selected if x[0]==stage])>=quotas[stage]:break
-        offset+=len(rows)
+            if len([x for x in selected if x[0]==stage])>=quotas[stage]:
+                break
+        if len(rows)<250:
+            break
     report["stage_selection"][stage]={"selected":len([x for x in selected if x[0]==stage]),"rows_examined":examined,"missing_or_duplicate_source":missing_source}
 cache={};hashes={}
 def metadata(stage,row_id,fid,page,import_id,expected_sha,gender,total,has_name):
