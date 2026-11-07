@@ -40,7 +40,7 @@ export default function ThirdPrimaryMathOutcomes({questions}:{questions:Question
  return <section className="tpm-panel" aria-label="مؤشرات نواتج تعلم الرياضيات للصف الثالث الابتدائي">
   <div className="tpm-head"><div><span className="tpm-eyebrow">LEARNING OUTCOMES / MATHEMATICS</span><h2>محاكي رياضيات ثالث ابتدائي</h2><p>لوحة قياس نواتج التعلم والمؤشرات من الأسئلة العشرين في النموذج المرفق</p></div><div className="tpm-total"><b>20</b><span>سؤالًا في النموذج</span></div></div>
   <div className="tpm-summary">
-   <article><b>4</b><span>نواتج تعلم</span></article><article><b>10</b><span>مؤشرات أداء</span></article><article><b>20</b><span>سؤالًا موزعًا</span></article><article><b>{hasEvidence?'متاح':'بانتظار البيانات'}</b><span>حالة تحليل النتائج</span></article>
+   <article><b>4</b><span>نواتج تعلم</span></article><article><b>8</b><span>مؤشرات أداء</span></article><article><b>20</b><span>سؤالًا موزعًا</span></article><article><b>{hasEvidence?'متاح':'بانتظار البيانات'}</b><span>حالة تحليل النتائج</span></article>
   </div>
   {!hasEvidence&&<div className="tpm-note">خريطة المؤشرات ومفتاح الإجابة ظاهران من الملف المرجعي. لا توجد إجابات موثقة في نطاق الفلاتر الحالي لاحتساب الإتقان؛ لن تُعرض نسبة افتراضية.</div>}
   <div className="tpm-outcomes">{mapped.map((o,index)=><article className="tpm-outcome" key={index}>
