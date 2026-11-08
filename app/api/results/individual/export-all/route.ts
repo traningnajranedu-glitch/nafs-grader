@@ -106,7 +106,12 @@ export async function GET(req:NextRequest){
       }
      }
      if(skillN===2)files[4].push(strToU8(rowXml(skillN++,['','','','','','لا تتوفر روابط موثقة بين الأسئلة والمهارات في قاعدة البيانات الحالية','','','',''])));
-     for(const a of schoolAgg.values())files[5].push(strToU8(rowXml(schoolN++,[a.stage,a.gender,a.school,a.students.size,a.count?Math.round(a.sum/a.count*100)/100:''])));
+     for (const a of schoolAgg.values()) {
+        files[5].push(strToU8(rowXml(schoolN++, [
+          a.stage, a.gender, a.school, a.students.size,
+          a.count ? Math.round(a.sum / a.count * 100) / 100 : ''
+        ])));
+      }
      const summary=[
       ['مصنف نتائج نافس 2026 الشامل'],['الإدارة العامة للتعليم بنجران'],['يشمل النتائج المعتمدة فقط · لا يشمل السجلات قيد المراجعة'],
       ['إجمالي سجلات الطلاب',totalStudents],['ثالث ابتدائي',counts.primary3],['سادس ابتدائي',counts.primary6],['ثالث متوسط',counts.middle3],
