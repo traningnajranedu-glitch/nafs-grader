@@ -37,7 +37,7 @@ export async function GET(req:NextRequest){
    XLSX.utils.book_append_sheet(wb,ws,name);
   };
 
-  const studentRows:any[][]=[['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','السجل المدني','الصف','العربية','الرياضيات','العلوم','المجموع','الدرجة القصوى','نسبة الإتقان %','حالة النتيجة']];
+  const studentRows:any[][]=[['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','السجل المدني','الصف المسجل','العربية','الرياضيات','العلوم','المجموع','الدرجة القصوى','نسبة الإتقان %','حالة النتيجة']];
   const subjectRows:any[][]=[['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','المادة','الدرجة','الدرجة القصوى','نسبة الإتقان %']];
   const answerRows:any[][]=[['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','المادة','رقم السؤال','إجابة الطالب','الإجابة الصحيحة','حالة الإجابة','الدرجة','رمز المهارة','المهارة']];
   const skillAgg=new Map<string,{stage:string;gender:string;school:string;student:string;subject:string;skill:string;count:number;correct:number;points:number}>();
@@ -47,19 +47,21 @@ export async function GET(req:NextRequest){
    const stage=stageLabels[r.stage]||r.stage;
    const totals=subjectTotals(r);
    const by=new Map(totals.map((x:any)=>[x.key,x.value]));
-   const total=Number(r.total)||0,score=Number(r.score)||0;
+   const score=Number(r.score)||0;
    studentRows.push([r.id,clean(r.student_name)||'اسم الطالب غير متوفر',clean(r.school_name),stage,clean(r.gender)||'غير محدد',clean(r.civil_id),stage,by.get('arabic')??'',by.get('math')??'',by.get('science')??'',clean(r.score),clean(r.total),pct(r.score,r.total),'معتمدة']);
    for(const s of totals){
     if(s.value!==''&&s.value!==null){
-     const subjectTotal=subjectLabels[s.key]==='اللغة العربية'?null:null;
      subjectRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),s.label,s.value,'', '',]);
     }
    }
    const questions=questionRecords(r);
+   const rawQuestions=Array.isArray(r.answers?.questions)?r.answers.questions:[];
    for(const q of questions){
+    const raw=rawQuestions.find((x:any)=>x&&x.subject===q.subject&&Number(x.number)===q.number)||{};
     const sm=skillMap.get([r.stage,r.gender||'',q.subject,q.number].join('|'))||null;
-    const skill=sm?.skill_name||'غير مصنف';
-    answerRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),q.subjectLabel,q.number,clean(q.choice),clean(q.correct),q.correctness,clean(q.awarded),clean(sm?.skill_code),skill]);
+    const skill=raw.skill_name||raw.skill||sm?.skill_name||'غير مصنف';
+    const skillCode=raw.skill_code||sm?.skill_code||'';
+    answerRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),q.subjectLabel,q.number,clean(q.choice),clean(q.correct),q.correctness,clean(q.awarded),clean(skillCode),skill]);
     const skey=[r.stage,r.gender||'',r.school_name||'',r.id,q.subject,skill].join('|');
     const a=skillAgg.get(skey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',student:r.student_name||'',subject:q.subjectLabel,skill,count:0,correct:0,points:0};
     a.count++;if(q.correctness==='صحيحة')a.correct++;a.points+=Number(q.awarded)||0;skillAgg.set(skey,a);
