@@ -7,7 +7,7 @@ export const dynamic='force-dynamic';
 
 const stages=['primary3','primary6','middle3'];
 const clean=(v:any)=>v===null||v===undefined?'':v;
-const pct=(score:any,total:any)=>Number(total)>0?Math.round((Number(score)/Number(total))*10000)/100:'';
+const pct=(score:any,total:any)=>score!==null&&score!==undefined&&score!==''&&Number(total)>0?Math.round((Number(score)/Number(total))*10000)/100:'';
 
 export async function GET(req:NextRequest){
  try{
@@ -48,7 +48,7 @@ export async function GET(req:NextRequest){
    const totals=subjectTotals(r);
    const by=new Map(totals.map((x:any)=>[x.key,x.value]));
    const score=Number(r.score)||0;
-   studentRows.push([r.id,clean(r.student_name)||'اسم الطالب غير متوفر',clean(r.school_name),stage,clean(r.gender)||'غير محدد',clean(r.civil_id),stage,by.get('arabic')??'',by.get('math')??'',by.get('science')??'',clean(r.score),clean(r.total),pct(r.score,r.total),'معتمدة']);
+   studentRows.push([r.id,clean(r.student_name)||'اسم الطالب غير متوفر',clean(r.school_name),stage,clean(r.gender)||'غير محدد',clean(r.civil_id),'',by.get('arabic')??'',by.get('math')??'',by.get('science')??'',clean(r.score),clean(r.total),pct(r.score,r.total),'معتمدة']);
    for(const s of totals){
     if(s.value!==''&&s.value!==null){
      subjectRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),s.label,s.value,10,pct(s.value,10)]);
@@ -71,7 +71,7 @@ export async function GET(req:NextRequest){
    }
    const schoolKey=[r.stage,r.gender||'',r.school_name||''].join('|');
    const sa=schoolAgg.get(schoolKey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',students:new Set<string>(),sum:0,count:0};
-   sa.students.add(r.id);if(Number.isFinite(Number(r.score))){sa.sum+=Number(r.score);sa.count++;}schoolAgg.set(schoolKey,sa);
+   sa.students.add(r.id);if(r.score!==null&&r.score!==undefined&&r.score!==''){sa.sum+=Number(r.score);sa.count++;}schoolAgg.set(schoolKey,sa);
   }
   const skillRowsOut:any[][]=[['المرحلة','الجنس','المدرسة','اسم الطالب','المادة','المهارة','عدد الأسئلة','الإجابات الصحيحة','نسبة الإتقان %','مجموع الدرجات']];
   for(const a of skillAgg.values())skillRowsOut.push([a.stage,a.gender,a.school,a.student,a.subject,a.skill,a.count,a.correct,a.count?Math.round(a.correct/a.count*10000)/100:0,a.points]);
