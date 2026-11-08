@@ -2,15 +2,54 @@ import {serviceDb} from './google-drive-server';
 export const stageLabels:Record<string,string>={primary3:'ثالث ابتدائي',primary6:'سادس ابتدائي',middle3:'ثالث متوسط'};
 export const subjectLabels:Record<string,string>={arabic:'اللغة العربية',math:'الرياضيات',science:'العلوم'};
 export type ResultRow={id:string;import_id:string;student_name:string|null;civil_id:string|null;school_name:string|null;stage:string;gender:string|null;score:number|null;total:number|null;answers:any;status:string};
+
 export async function latestVerifiedRows(stage:string,school?:string,gender?:string){
  if(!stageLabels[stage])throw Error('مرحلة دراسية غير صالحة');
- const db=serviceDb();let imports:any[]=[];let from=0;
- while(true){const {data,error}=await db.from('nafs_result_imports').select('id,drive_file_id,stage,school_name,modified_time,imported_at').eq('stage',stage).order('modified_time',{ascending:false,nullsFirst:false}).order('imported_at',{ascending:false}).range(from,from+999);if(error)throw error;if(!data?.length)break;imports.push(...data);from+=data.length;if(data.length<1000)break;}
- const latest=new Map<string,any>();for(const item of imports){const key=item.drive_file_id||item.id;if(!latest.has(key))latest.set(key,item);}
- const ids=[...latest.values()].map(x=>x.id);if(!ids.length)return [];
- let rows:ResultRow[]=[];from=0;
- while(true){const {data,error}=await db.from('nafs_result_import_rows').select('id,import_id,student_name,civil_id,school_name,stage,gender,score,total,answers,status').in('import_id',ids).eq('status','verified').order('row_number',{ascending:true}).range(from,from+999);if(error)throw error;if(!data?.length)break;rows.push(...data as ResultRow[]);from+=data.length;if(data.length<1000)break;}
- const norm=(v:string|null|undefined)=>(v||'').replace(/\\.xlsx?$/i,'').replace(/[أإآ]/g,'ا').replace(/\\s+/g,' ').trim();
+ const db=serviceDb();
+ const imports:any[]=[];
+ let from=0;
+ while(true){
+  const {data,error}=await db.from('nafs_result_imports')
+   .select('id,drive_file_id,stage,school_name,modified_time,imported_at')
+   .eq('stage',stage)
+   .order('modified_time',{ascending:false,nullsFirst:false})
+   .order('imported_at',{ascending:false})
+   .range(from,from+999);
+  if(error)throw error;
+  if(!data?.length)break;
+  imports.push(...data);
+  from+=data.length;
+  if(data.length<1000)break;
+ }
+ const latest=new Map<string,any>();
+ for(const item of imports){
+  const key=item.drive_file_id||item.id;
+  if(!latest.has(key))latest.set(key,item);
+ }
+ const ids=[...latest.values()].map(x=>x.id);
+ if(!ids.length)return [];
+
+ // Keep each PostgREST IN filter small; a stage may contain hundreds of imports.
+ const rows:ResultRow[]=[];
+ const batchSize=100;
+ for(let i=0;i<ids.length;i+=batchSize){
+  const batch=ids.slice(i,i+batchSize);
+  let rowOffset=0;
+  while(true){
+   const {data,error}=await db.from('nafs_result_import_rows')
+    .select('id,import_id,student_name,civil_id,school_name,stage,gender,score,total,answers,status')
+    .in('import_id',batch)
+    .eq('status','verified')
+    .order('row_number',{ascending:true})
+    .range(rowOffset,rowOffset+999);
+   if(error)throw error;
+   if(!data?.length)break;
+   rows.push(...data as ResultRow[]);
+   rowOffset+=data.length;
+   if(data.length<1000)break;
+  }
+ }
+ const norm=(v:string|null|undefined)=>(v||'').replace(/\.xlsx?$/i,'').replace(/[أإآ]/g,'ا').replace(/\s+/g,' ').trim();
  return rows.filter(r=>(!school||norm(r.school_name)===norm(school))&&(!gender||r.gender===gender));
 }
 export function questionRecords(row:ResultRow){
