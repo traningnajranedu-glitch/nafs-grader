@@ -106,7 +106,7 @@ export async function GET(req:NextRequest){
      }
      for(const a of skillAgg.values())files[4].push(strToU8(rowXml(skillN++,[a.stage,a.gender,a.school,a.student,a.subject,a.skill,a.count,a.correct,a.count?Math.round(a.correct/a.count*10000)/100:0,a.points])));
      if(skillN===2)files[4].push(strToU8(rowXml(skillN++,['','','','','','لا تتوفر روابط موثقة بين الأسئلة والمهارات في قاعدة البيانات الحالية','','','',''])));
-     for(const a of schoolAgg.values())files[5].push(strToU8(rowXml(schoolN++,[a.stage,a.gender,a.school,a.students.size,a.count?Math.round(a.sum/a.count*100)/100:'']));
+     for(const a of schoolAgg.values())files[5].push(strToU8(rowXml(schoolN++,[a.stage,a.gender,a.school,a.students.size,a.count?Math.round(a.sum/a.count*100)/100:''])));
      const summary=[
       ['مصنف نتائج نافس 2026 الشامل'],['الإدارة العامة للتعليم بنجران'],['يشمل النتائج المعتمدة فقط · لا يشمل السجلات قيد المراجعة'],
       ['إجمالي سجلات الطلاب',totalStudents],['ثالث ابتدائي',counts.primary3],['سادس ابتدائي',counts.primary6],['ثالث متوسط',counts.middle3],
@@ -114,7 +114,7 @@ export async function GET(req:NextRequest){
       ['الأسئلة المرتبطة بمهارات موثقة',mappedQuestions],
       ['ملاحظة','تُترك بيانات المهارات فارغة أو غير مصنفة عندما لا يوجد ربط موثق للسؤال بمهارة.']
      ];
-     for(const line of summary)files[0].push(strToU8(rowXml(headers.indexOf(line)+1,line)));
+     for(let i=0;i<summary.length;i++)files[0].push(strToU8(rowXml(i+1,summary[i])));
      for(const f of files)f.push(strToU8(sheetTail),true);
 
      addStatic(zip,'[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+names.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')+'</Types>');
