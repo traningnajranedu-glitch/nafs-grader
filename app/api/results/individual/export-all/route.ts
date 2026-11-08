@@ -51,16 +51,16 @@ export async function GET(req:NextRequest){
    studentRows.push([r.id,clean(r.student_name)||'اسم الطالب غير متوفر',clean(r.school_name),stage,clean(r.gender)||'غير محدد',clean(r.civil_id),stage,by.get('arabic')??'',by.get('math')??'',by.get('science')??'',clean(r.score),clean(r.total),pct(r.score,r.total),'معتمدة']);
    for(const s of totals){
     if(s.value!==''&&s.value!==null){
-     subjectRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),s.label,s.value,'', '',]);
+     subjectRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),s.label,s.value,10,pct(s.value,10)]);
     }
    }
    const questions=questionRecords(r);
-   const rawQuestions=Array.isArray(r.answers?.questions)?r.answers.questions:[];
+   const rawQuestions=Array.isArray(r.answers?.excelSnapshot?.questions)?r.answers.excelSnapshot.questions:Array.isArray(r.answers?.questions)?r.answers.questions:[];
    for(const q of questions){
     const raw=rawQuestions.find((x:any)=>x&&x.subject===q.subject&&Number(x.number)===q.number)||{};
     const sm=skillMap.get([r.stage,r.gender||'',q.subject,q.number].join('|'))||null;
-    const skill=raw.skill_name||raw.skill||sm?.skill_name||'غير مصنف';
-    const skillCode=raw.skill_code||sm?.skill_code||'';
+    const skill=q.skillName||raw.skill_name||raw.skill||sm?.skill_name||'غير مصنف';
+    const skillCode=q.skillCode||raw.skill_code||sm?.skill_code||'';
     answerRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),q.subjectLabel,q.number,clean(q.choice),clean(q.correct),q.correctness,clean(q.awarded),clean(skillCode),skill]);
     const skey=[r.stage,r.gender||'',r.school_name||'',r.id,q.subject,skill].join('|');
     const a=skillAgg.get(skey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',student:r.student_name||'',subject:q.subjectLabel,skill,count:0,correct:0,points:0};
