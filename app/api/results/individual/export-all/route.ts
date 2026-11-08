@@ -47,7 +47,6 @@ export async function GET(req:NextRequest){
     const counts:Record<string,number>={primary3:0,primary6:0,middle3:0};
     let totalStudents=0,withAnswers=0,withoutAnswers=0,mappedQuestions=0;
     let studentN=1,subjectN=1,answerN=1,skillN=1,schoolN=1;
-    const skillAgg=new Map<string,{stage:string;gender:string;school:string;student:string;subject:string;skill:string;count:number;correct:number;points:number}>();
     const schoolAgg=new Map<string,{stage:string;gender:string;school:string;students:Set<string>;sum:number;count:number}>();
     const headers=[
      ['مصنف نتائج نافس 2026 الشامل'],
@@ -83,6 +82,7 @@ export async function GET(req:NextRequest){
        const questions=questionRecords(r);
        if(questions.length)withAnswers++;else withoutAnswers++;
        const rawQuestions=Array.isArray(r.answers?.excelSnapshot?.questions)?r.answers.excelSnapshot.questions:Array.isArray(r.answers?.questions)?r.answers.questions:[];
+       const rowSkillAgg=new Map<string,{stage:string;gender:string;school:string;student:string;subject:string;skill:string;count:number;correct:number;points:number}>();
        const rawMap=new Map<string,any>();
        for(const raw of rawQuestions)if(raw&&raw.subject!==undefined)rawMap.set([raw.subject,Number(raw.number)].join('|'),raw);
        for(const q of questions){
@@ -95,16 +95,16 @@ export async function GET(req:NextRequest){
         if(mappedSkill){
          mappedQuestions++;
          const skey=[r.stage,r.gender||'',r.school_name||'',r.id,q.subject,skill].join('|');
-         const a=skillAgg.get(skey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',student:r.student_name||'',subject:q.subjectLabel,skill,count:0,correct:0,points:0};
-         a.count++;if(q.correctness==='صحيحة')a.correct++;a.points+=Number(q.awarded)||0;skillAgg.set(skey,a);
+         const a=rowSkillAgg.get(skey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',student:r.student_name||'',subject:q.subjectLabel,skill,count:0,correct:0,points:0};
+         a.count++;if(q.correctness==='صحيحة')a.correct++;a.points+=Number(q.awarded)||0;rowSkillAgg.set(skey,a);
         }
        }
+       for(const a of rowSkillAgg.values())files[4].push(strToU8(rowXml(skillN++,[a.stage,a.gender,a.school,a.student,a.subject,a.skill,a.count,a.correct,a.count?Math.round(a.correct/a.count*10000)/100:0,a.points])));
        const schoolKey=[r.stage,r.gender||'',r.school_name||''].join('|');
        const sa=schoolAgg.get(schoolKey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',students:new Set<string>(),sum:0,count:0};
        sa.students.add(r.id);if(r.score!==null&&r.score!==undefined&&r.score!==''){sa.sum+=Number(r.score);sa.count++;}schoolAgg.set(schoolKey,sa);
       }
      }
-     for(const a of skillAgg.values())files[4].push(strToU8(rowXml(skillN++,[a.stage,a.gender,a.school,a.student,a.subject,a.skill,a.count,a.correct,a.count?Math.round(a.correct/a.count*10000)/100:0,a.points])));
      if(skillN===2)files[4].push(strToU8(rowXml(skillN++,['','','','','','لا تتوفر روابط موثقة بين الأسئلة والمهارات في قاعدة البيانات الحالية','','','',''])));
      for(const a of schoolAgg.values())files[5].push(strToU8(rowXml(schoolN++,[a.stage,a.gender,a.school,a.students.size,a.count?Math.round(a.sum/a.count*100)/100:''])));
      const summary=[
