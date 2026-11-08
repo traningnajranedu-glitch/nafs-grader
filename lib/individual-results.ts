@@ -76,3 +76,46 @@ export function subjectTotals(row:ResultRow){
   return {key,label,value:value===undefined||value===null?'':Number(value)};
  });
 }
+
+
+/** Stream verified rows in bounded database pages for large exports. */
+export async function* iterateLatestVerifiedRows(stage:string):AsyncGenerator<ResultRow>{
+ if(!stageLabels[stage])throw Error('مرحلة دراسية غير صالحة');
+ const db=serviceDb();
+ const latest=new Map<string,any>();
+ let from=0;
+ while(true){
+  const {data,error}=await db.from('nafs_result_imports')
+   .select('id,drive_file_id,stage,modified_time,imported_at')
+   .eq('stage',stage)
+   .order('modified_time',{ascending:false,nullsFirst:false})
+   .order('imported_at',{ascending:false})
+   .range(from,from+999);
+  if(error)throw error;
+  if(!data?.length)break;
+  for(const item of data){
+   const key=item.drive_file_id||item.id;
+   if(!latest.has(key))latest.set(key,item);
+  }
+  from+=data.length;
+  if(data.length<1000)break;
+ }
+ const ids=[...latest.values()].map(x=>x.id);
+ for(let i=0;i<ids.length;i+=100){
+  const batch=ids.slice(i,i+100);
+  let offset=0;
+  while(true){
+   const {data,error}=await db.from('nafs_result_import_rows')
+    .select('id,import_id,student_name,civil_id,school_name,stage,gender,score,total,answers,status')
+    .in('import_id',batch)
+    .eq('status','verified')
+    .order('row_number',{ascending:true})
+    .range(offset,offset+499);
+   if(error)throw error;
+   if(!data?.length)break;
+   for(const row of data as ResultRow[])yield row;
+   offset+=data.length;
+   if(data.length<500)break;
+  }
+ }
+}
