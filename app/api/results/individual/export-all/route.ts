@@ -102,7 +102,7 @@ export async function GET(req:NextRequest){
        for(const a of rowSkillAgg.values())files[4].push(strToU8(rowXml(skillN++,[a.stage,a.gender,a.school,a.student,a.subject,a.skill,a.count,a.correct,a.count?Math.round(a.correct/a.count*10000)/100:0,a.points])));
        const schoolKey=[r.stage,r.gender||'',r.school_name||''].join('|');
        const sa=schoolAgg.get(schoolKey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',students:new Set<string>(),sum:0,count:0};
-       sa.students.add(r.id);if(r.score!==null&&r.score!==undefined&&r.score!==''){sa.sum+=Number(r.score);sa.count++;}schoolAgg.set(schoolKey,sa);
+       sa.students.add(r.id);if(r.score!==null&&r.score!==undefined){sa.sum+=Number(r.score);sa.count++;}schoolAgg.set(schoolKey,sa);
       }
      }
      if(skillN===2)files[4].push(strToU8(rowXml(skillN++,['','','','','','لا تتوفر روابط موثقة بين الأسئلة والمهارات في قاعدة البيانات الحالية','','','',''])));
