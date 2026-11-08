@@ -14,10 +14,26 @@ export async function latestVerifiedRows(stage:string,school?:string,gender?:str
  return rows.filter(r=>(!school||norm(r.school_name)===norm(school))&&(!gender||r.gender===gender));
 }
 export function questionRecords(row:ResultRow){
- const list=Array.isArray(row.answers?.questions)?row.answers.questions:[];
- return list.filter((q:any)=>q&&typeof q==='object'&&subjectLabels[q.subject]).map((q:any)=>({subject:q.subject,subjectLabel:subjectLabels[q.subject],number:Number(q.number)||0,choice:q.choice??null,correct:q.key??null,state:q.state??null,awarded:typeof q.awarded==='number'?q.awarded:null,correctness:typeof q.awarded==='number'?(q.awarded>0?'صحيحة':q.choice==null?'غير مجابة':'غير صحيحة'):'غير محدد'}));
+ const snapshot=row.answers?.excelSnapshot;
+ const list=Array.isArray(snapshot?.questions)?snapshot.questions:Array.isArray(row.answers?.questions)?row.answers.questions:[];
+ return list.filter((q:any)=>q&&typeof q==='object'&&subjectLabels[q.subject]).map((q:any)=>({
+  subject:q.subject,subjectLabel:subjectLabels[q.subject],number:Number(q.number)||0,
+  choice:q.choice??null,correct:q.key??q.correct_answer??null,state:q.state??null,
+  awarded:typeof q.awarded==='number'?q.awarded:null,
+  correctness:typeof q.awarded==='number'?(q.awarded>0?'صحيحة':q.choice==null?'غير مجابة':'غير صحيحة'):'غير محدد',
+  skillCode:q.skill_code??q.skillCode??null,skillName:q.skill_name??q.skillName??q.skill??q.competency??null
+ })).filter((q:any)=>q.number>0);
 }
 export function subjectTotals(row:ResultRow){
  const raw=row.answers?.subjects&&typeof row.answers.subjects==='object'?row.answers.subjects:{};
- return Object.entries(subjectLabels).map(([key,label])=>({key,label,value:raw[key]===undefined||raw[key]===null?'':Number(raw[key])}));
+ const columns=row.answers?.excelSnapshot?.columns||{};
+ const aliases:Record<string,string[]>={arabic:['arabic','لغتي من 10','اللغة العربية من 10','العربية'],math:['math','الرياضيات من 10','رياضيات من 10'],science:['science','العلوم من 10','علوم من 10']};
+ return Object.entries(subjectLabels).map(([key,label])=>{
+  let value=raw[key];
+  if(value===undefined||value===null){
+   const found=(aliases[key]||[]).find(k=>columns[k]!==undefined&&columns[k]!==null&&columns[k]!=='');
+   if(found)value=columns[found];
+  }
+  return {key,label,value:value===undefined||value===null?'':Number(value)};
+ });
 }
