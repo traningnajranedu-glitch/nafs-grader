@@ -156,3 +156,42 @@
 @media(prefers-reduced-motion:reduce){
  .results *, .results *:before,.results *:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
+
+
+/* High-contrast data surfaces: gender classification and lower report tables */
+.results .gender-breakdown{
+ margin:16px 0!important;padding:22px!important;border:1px solid #164d68!important;border-radius:20px!important;
+ background:linear-gradient(125deg,#082f49 0%,#07536a 55%,#086d70 100%)!important;
+ color:#fff!important;box-shadow:0 16px 38px rgba(5,43,65,.2),inset 0 1px 0 rgba(255,255,255,.12)!important
+}
+.results .gender-breakdown>h2{color:#fff!important;font-size:22px!important;font-weight:900!important;margin:0 0 16px!important}
+.results .gender-stat{
+ min-height:104px;padding:15px 17px;border:1px solid rgba(255,255,255,.28);border-radius:16px;
+ display:flex;flex-direction:column;justify-content:center;gap:9px;background:rgba(255,255,255,.12);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.12)
+}
+.results .gender-stat small{font-size:13px;font-weight:800;color:#f0f9ff!important}
+.results .gender-stat strong{font-size:clamp(25px,2.5vw,34px);font-weight:950;line-height:1.2;color:#fff!important;text-shadow:0 2px 10px rgba(0,0,0,.25)}
+.results .gender-stat.boys{border-right:5px solid #60b8ff}
+.results .gender-stat.girls{border-right:5px solid #ff9ac7}
+.results .gender-stat.unknown{border-right:5px solid #ffd36e}
+.results .gender-table{margin-top:15px!important;border:1px solid #b9d2df!important;border-radius:14px!important;background:#fff!important;overflow:auto}
+.results .gender-table table{background:#fff!important}
+.results .gender-table th{background:#173f58!important;color:#fff!important;font-weight:900!important;border-color:#315c72!important}
+.results .gender-table td{background:#fff!important;color:#17364a!important;font-weight:800!important;border-color:#d8e4eb!important}
+.results .gender-table tbody tr:nth-child(even) td{background:#f0f6fa!important}
+.results .gender-table tbody tr:hover td{background:#e2f3f5!important}
+.results .report-data-section{
+ margin:16px 0!important;padding:21px!important;border:1px solid #c8d8e2!important;border-radius:20px!important;
+ background:#fff!important;color:#142f42!important;box-shadow:0 12px 30px rgba(15,48,69,.075)!important
+}
+.results .report-data-section>h2{color:#123b55!important;font-weight:950!important;font-size:22px!important;margin:0 0 14px!important}
+.results .report-data-section>p{color:#40596b!important;font-weight:600!important;line-height:1.8}
+.results .report-data-section .table{border:1px solid #bdcdd8!important;border-radius:14px!important;background:#fff!important}
+.results .report-data-section .table table{background:#fff!important}
+.results .report-data-section .table th{background:#173f58!important;color:#fff!important;font-weight:900!important;border-bottom:1px solid #315b72!important}
+.results .report-data-section .table td{background:#fff!important;color:#142f42!important;font-weight:700!important;border-bottom:1px solid #d8e2e9!important}
+.results .report-data-section .table tbody tr:nth-child(even) td{background:#f1f6f9!important}
+.results .report-data-section .table tbody tr:hover td{background:#e3f2f4!important}
+.results .report-data-section .badge{background:#dcecf4!important;color:#123e58!important;border:1px solid #aac7d7!important;font-weight:900!important}
+.results .report-data-section .notice{background:#edf6f9!important;color:#173b50!important;border-color:#c1d9e4!important}
