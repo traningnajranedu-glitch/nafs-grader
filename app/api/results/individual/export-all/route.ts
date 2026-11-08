@@ -59,12 +59,15 @@ export async function GET(req:NextRequest){
    for(const q of questions){
     const raw=rawQuestions.find((x:any)=>x&&x.subject===q.subject&&Number(x.number)===q.number)||{};
     const sm=skillMap.get([r.stage,r.gender||'',q.subject,q.number].join('|'))||null;
-    const skill=q.skillName||raw.skill_name||raw.skill||sm?.skill_name||'غير مصنف';
+    const mappedSkill=q.skillName||raw.skill_name||raw.skill||sm?.skill_name||null;
+    const skill=mappedSkill||'غير مرتبط بمهارة';
     const skillCode=q.skillCode||raw.skill_code||sm?.skill_code||'';
     answerRows.push([r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),q.subjectLabel,q.number,clean(q.choice),clean(q.correct),q.correctness,clean(q.awarded),clean(skillCode),skill]);
-    const skey=[r.stage,r.gender||'',r.school_name||'',r.id,q.subject,skill].join('|');
-    const a=skillAgg.get(skey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',student:r.student_name||'',subject:q.subjectLabel,skill,count:0,correct:0,points:0};
-    a.count++;if(q.correctness==='صحيحة')a.correct++;a.points+=Number(q.awarded)||0;skillAgg.set(skey,a);
+    if(mappedSkill){
+     const skey=[r.stage,r.gender||'',r.school_name||'',r.id,q.subject,skill].join('|');
+     const a=skillAgg.get(skey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',student:r.student_name||'',subject:q.subjectLabel,skill,count:0,correct:0,points:0};
+     a.count++;if(q.correctness==='صحيحة')a.correct++;a.points+=Number(q.awarded)||0;skillAgg.set(skey,a);
+    }
    }
    const schoolKey=[r.stage,r.gender||'',r.school_name||''].join('|');
    const sa=schoolAgg.get(schoolKey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',students:new Set<string>(),sum:0,count:0};
@@ -72,6 +75,7 @@ export async function GET(req:NextRequest){
   }
   const skillRowsOut:any[][]=[['المرحلة','الجنس','المدرسة','اسم الطالب','المادة','المهارة','عدد الأسئلة','الإجابات الصحيحة','نسبة الإتقان %','مجموع الدرجات']];
   for(const a of skillAgg.values())skillRowsOut.push([a.stage,a.gender,a.school,a.student,a.subject,a.skill,a.count,a.correct,a.count?Math.round(a.correct/a.count*10000)/100:0,a.points]);
+  if(skillRowsOut.length===1)skillRowsOut.push(['','','','','','لا تتوفر روابط موثقة بين الأسئلة والمهارات في قاعدة البيانات الحالية','','','','']);
   const schoolRows:any[][]=[['المرحلة','الجنس','المدرسة','عدد الطلاب','متوسط الدرجة']];
   for(const a of schoolAgg.values())schoolRows.push([a.stage,a.gender,a.school,a.students.size,a.count?Math.round(a.sum/a.count*100)/100:'']);
   const summary:any[][]=[
@@ -84,6 +88,7 @@ export async function GET(req:NextRequest){
    ['ثالث متوسط',all.filter(x=>x.stage==='middle3').length],
    ['سجلات تتوفر لها إجابات تفصيلية',all.filter(x=>questionRecords(x).length>0).length],
    ['سجلات لا تتوفر لها إجابات تفصيلية',all.filter(x=>questionRecords(x).length===0).length],
+   ['الأسئلة المرتبطة بمهارات موثقة',all.reduce((n,x)=>n+questionRecords(x).filter(q=>q.skillName).length,0)],
    ['ملاحظة','تُترك بيانات المهارات فارغة أو غير مصنفة عندما لا يوجد ربط موثق للسؤال بمهارة.']
   ];
   const ws0=XLSX.utils.aoa_to_sheet(summary);ws0['!cols']=[{wch:48},{wch:28}];ws0['!views']=[{rightToLeft:true}];XLSX.utils.book_append_sheet(wb,ws0,'ملخص عام');
