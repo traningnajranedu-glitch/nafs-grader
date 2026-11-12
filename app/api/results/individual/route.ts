@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {requireAdmin} from '../../../../lib/google-drive-server';
-import {latestVerifiedRows,stageLabels,questionRecords,subjectTotals} from '../../../../lib/individual-results';
+import {latestVerifiedRows,stageLabels,questionRecords,subjectTotals,mathSupplement,displayedTotal} from '../../../../lib/individual-results';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 export async function GET(req:NextRequest){
  try{
@@ -16,7 +16,7 @@ export async function GET(req:NextRequest){
   if(mode!=='school'||!school)return NextResponse.json({error:'حدد المدرسة المطلوبة'},{status:400});
   const norm=(v:string)=>(v||'').replace(/\\.xlsx?$/i,'').replace(/[أإآ]/g,'ا').replace(/\\s+/g,' ').trim();
   const selected=rows.filter(r=>norm(r.school_name||'')===norm(school));
-  const students=selected.map(r=>({id:r.id,name:r.student_name||'اسم الطالب غير متوفر',civilId:r.civil_id||'',grade:stageLabels[stage],gender:r.gender||'غير محدد',score:r.score,total:r.total,subjects:subjectTotals(r),questions:questionRecords(r)}));
+  const students=selected.map(r=>({id:r.id,name:r.student_name||'اسم الطالب غير متوفر',civilId:r.civil_id||'',grade:stageLabels[stage],gender:r.gender||'غير محدد',...displayedTotal(r),mathSupplementScore:mathSupplement(r)?.score??null,subjects:subjectTotals(r),questions:questionRecords(r)}));
   return NextResponse.json({stage,stageLabel:stageLabels[stage],school,gender:gender||null,students,summary:{students:students.length,withQuestions:students.filter(x=>x.questions.length).length,withoutQuestions:students.filter(x=>!x.questions.length).length}},{headers:{'Cache-Control':'private, no-store'}});
  }catch(e){console.error('Individual results API',e);return NextResponse.json({error:e instanceof Error?e.message:'تعذر تحميل النتائج الفردية'},{status:500})}
 }

@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {Zip,ZipPassThrough,strToU8} from 'fflate';
 import {requireAdmin,serviceDb} from '../../../../../lib/google-drive-server';
-import {iterateLatestVerifiedRows,stageLabels,subjectLabels,questionRecords,subjectTotals} from '../../../../../lib/individual-results';
+import {iterateLatestVerifiedRows,stageLabels,subjectLabels,questionRecords,subjectTotals,mathSupplement,displayedTotal} from '../../../../../lib/individual-results';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -51,14 +51,14 @@ export async function GET(req:NextRequest){
     const headers=[
      ['مصنف نتائج نافس 2026 الشامل'],
      ['الإدارة العامة للتعليم بنجران'],
-     ['يشمل النتائج المعتمدة فقط · لا يشمل السجلات قيد المراجعة'],
+     ['يشمل النتائج المعتمدة، بما فيها استكمال الرياضيات 11–20 المعتمد مستقلًا'],
      ['إجمالي سجلات الطلاب',0],
      ['ثالث ابتدائي',0],['سادس ابتدائي',0],['ثالث متوسط',0],
      ['سجلات تتوفر لها إجابات تفصيلية',0],['سجلات لا تتوفر لها إجابات تفصيلية',0],
      ['الأسئلة المرتبطة بمهارات موثقة',0],
      ['ملاحظة','تُترك بيانات المهارات فارغة أو غير مصنفة عندما لا يوجد ربط موثق للسؤال بمهارة.']
     ];
-    const studentHeader=['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','السجل المدني','الصف المسجل','العربية','الرياضيات','العلوم','المجموع','الدرجة القصوى','نسبة الإتقان %','حالة النتيجة'];
+    const studentHeader=['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','السجل المدني','الصف المسجل','العربية','الرياضيات','العلوم','المجموع','الدرجة القصوى','نسبة الإتقان %','حالة النتيجة','رياضيات 11–20 من 10','الحد الأقصى للرياضيات'];
     const subjectHeader=['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','المادة','الدرجة','الدرجة القصوى','نسبة الإتقان %'];
     const answerHeader=['معرّف السجل','اسم الطالب','المدرسة','المرحلة','الجنس','المادة','رقم السؤال','إجابة الطالب','الإجابة الصحيحة','حالة الإجابة','الدرجة','رمز المهارة','المهارة'];
     const skillHeader=['المرحلة','الجنس','المدرسة','اسم الطالب','المادة','المهارة','عدد الأسئلة','الإجابات الصحيحة','نسبة الإتقان %','مجموع الدرجات'];
@@ -75,10 +75,13 @@ export async function GET(req:NextRequest){
        const stage=stageLabels[stageKey]||stageKey;
        totalStudents++;counts[stageKey]=(counts[stageKey]||0)+1;
        const totals=subjectTotals(r);
+       const supplement=mathSupplement(r);
+       const result=displayedTotal(r);
        const by=new Map(totals.map((x:any)=>[x.key,x.value]));
-       files[1].push(strToU8(rowXml(studentN++,[r.id,clean(r.student_name)||'اسم الطالب غير متوفر',clean(r.school_name),stage,clean(r.gender)||'غير محدد',clean(r.civil_id),'',by.get('arabic')??'',by.get('math')??'',by.get('science')??'',clean(r.score),clean(r.total),pct(r.score,r.total),'معتمدة'])));
-       for(const s of totals)if(s.value!==''&&s.value!==null)files[2].push(strToU8(rowXml(subjectN++,[r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),s.label,s.value,10,pct(s.value,10)])));
+       files[1].push(strToU8(rowXml(studentN++,[r.id,clean(r.student_name)||'اسم الطالب غير متوفر',clean(r.school_name),stage,clean(r.gender)||'غير محدد',clean(r.civil_id),'',by.get('arabic')??'',by.get('math')??'',by.get('science')??'',clean(result.score),clean(result.total),pct(result.score,result.total),r.status==='verified'?'معتمدة':'استكمال الرياضيات فقط',supplement?.score??'',totals.find(x=>x.key==='math'&&x.value!=='')?.max??''])));
+       for(const s of totals)if(s.value!==''&&s.value!==null)files[2].push(strToU8(rowXml(subjectN++,[r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),s.label,s.value,s.max,pct(s.value,s.max)])));
 
+       if(supplement&&!supplement.combined)files[2].push(strToU8(rowXml(subjectN++,[r.id,clean(r.student_name),clean(r.school_name),stage,clean(r.gender),'الرياضيات 11–20',supplement.score,10,pct(supplement.score,10)])));
        const questions=questionRecords(r);
        if(questions.length)withAnswers++;else withoutAnswers++;
        const rawQuestions=Array.isArray(r.answers?.excelSnapshot?.questions)?r.answers.excelSnapshot.questions:Array.isArray(r.answers?.questions)?r.answers.questions:[];
@@ -102,7 +105,7 @@ export async function GET(req:NextRequest){
        for(const a of rowSkillAgg.values())files[4].push(strToU8(rowXml(skillN++,[a.stage,a.gender,a.school,a.student,a.subject,a.skill,a.count,a.correct,a.count?Math.round(a.correct/a.count*10000)/100:0,a.points])));
        const schoolKey=[r.stage,r.gender||'',r.school_name||''].join('|');
        const sa=schoolAgg.get(schoolKey)||{stage,gender:r.gender||'غير محدد',school:r.school_name||'',students:new Set<string>(),sum:0,count:0};
-       sa.students.add(r.id);if(r.score!==null&&r.score!==undefined){sa.sum+=Number(r.score);sa.count++;}schoolAgg.set(schoolKey,sa);
+       sa.students.add(r.id);if(r.status==='verified'&&r.score!==null&&r.score!==undefined){sa.sum+=Number(r.score);sa.count++;}schoolAgg.set(schoolKey,sa);
       }
      }
      if(skillN===2)files[4].push(strToU8(rowXml(skillN++,['','','','','','لا تتوفر روابط موثقة بين الأسئلة والمهارات في قاعدة البيانات الحالية','','','',''])));
@@ -113,7 +116,7 @@ export async function GET(req:NextRequest){
         ])));
       }
      const summary=[
-      ['مصنف نتائج نافس 2026 الشامل'],['الإدارة العامة للتعليم بنجران'],['يشمل النتائج المعتمدة فقط · لا يشمل السجلات قيد المراجعة'],
+      ['مصنف نتائج نافس 2026 الشامل'],['الإدارة العامة للتعليم بنجران'],['يشمل النتائج المعتمدة، بما فيها استكمال الرياضيات 11–20 المعتمد مستقلًا'],
       ['إجمالي سجلات الطلاب',totalStudents],['ثالث ابتدائي',counts.primary3],['سادس ابتدائي',counts.primary6],['ثالث متوسط',counts.middle3],
       ['سجلات تتوفر لها إجابات تفصيلية',withAnswers],['سجلات لا تتوفر لها إجابات تفصيلية',withoutAnswers],
       ['الأسئلة المرتبطة بمهارات موثقة',mappedQuestions],
