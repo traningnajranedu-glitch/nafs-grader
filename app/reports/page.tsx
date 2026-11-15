@@ -39,7 +39,8 @@ export default function SchoolReports(){
  const summary=useMemo(()=>{const m=new Map<string,{name:string;pages:number;complete:number;review:number;identity:number;shading:number}>();for(const r of live){const name=r.school_name||'غير محددة';const key=norm(name);const x=m.get(key)||{name,pages:0,complete:0,review:0,identity:0,shading:0};x.pages++;if(r.verified_at)x.complete++;else x.review++;m.set(key,x)}return [...m.values()].sort((a,b)=>b.pages-a.pages)},[live]);
  const totals=useMemo(()=>summary.reduce((a,s)=>({schools:a.schools+1,pages:a.pages+s.pages,complete:a.complete+s.complete,review:a.review+s.review,identity:0,shading:0}),{schools:0,pages:0,complete:0,review:0,identity:0,shading:0}),[summary]);
  const visibleSchools=summary;
- const display=totals;
+ const allStored=storedStats.reduce((a,s)=>({pages:a.pages+s.total,complete:a.complete+s.verified,review:a.review+s.pending}),{pages:0,complete:0,review:0});
+ const display=grade==='all'&&gender==='all'&&!query.trim()&&storedStats.length?{...totals,...allStored}:totals;
  const processed=display.pages?100*display.complete/display.pages:0;
  const genderGroups=['boys','girls'].map(g=>({key:g,stats:visibleSchools.filter(s=>classify(s.name,matchSchool(s.name))===g).reduce((a,s)=>({schools:a.schools+1,pages:a.pages+s.pages,complete:a.complete+s.complete,review:a.review+s.review}),{schools:0,pages:0,complete:0,review:0})}));
  function exportExcel(){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(visibleSchools.map(s=>({'المدرسة':s.name,'الأوراق':s.pages,'مكتملة':s.complete,'تحتاج مراجعة':s.review,'مراجعة بيانات':s.identity,'مراجعة التظليل':s.shading}))),'النتائج');XLSX.writeFile(wb,'تقارير-نافس-الأولية.xlsx')}
